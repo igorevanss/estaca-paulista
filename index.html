@@ -225,6 +225,34 @@ body {
 .kpi-badge.ok   { background: rgba(129,199,132,.12); color: var(--green); }
 
 /* ══════════════════════════════════════════════
+   LEGENDA CUSTOMIZADA DO GRÁFICO DE FREQUÊNCIA
+══════════════════════════════════════════════ */
+.freq-legend {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .35rem .6rem;
+  margin-top: .75rem;
+  padding-top: .65rem;
+  border-top: 1px solid var(--bord);
+}
+.freq-leg-item {
+  display: flex; align-items: center; gap: .42rem;
+  font-size: .73rem; color: var(--t2);
+  cursor: pointer; transition: opacity .2s;
+  user-select: none; padding: .15rem .2rem;
+  border-radius: 4px;
+}
+.freq-leg-item:hover { opacity: .75; }
+.freq-leg-item.hidden-ds { opacity: .35; }
+.freq-leg-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%; flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .freq-legend { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ══════════════════════════════════════════════
    LAYOUTS 2 COLUNAS
 ══════════════════════════════════════════════ */
 .two-col {
@@ -500,6 +528,8 @@ tbody tr:last-child td { border-bottom: none; }
       <div class="chart-wrap">
         <canvas id="chart-freq"></canvas>
       </div>
+      <!-- Legenda customizada abaixo do gráfico, 4 por linha -->
+      <div id="freq-legend-custom" class="freq-legend"></div>
     </div>
     <!-- Painel de alertas -->
     <div class="card">
@@ -899,33 +929,49 @@ function buildDemoData() {
     { ID:'C12', Nome_Completo:'Marcos Nunes',      ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'02/05/2026', Sexo:'M', Idade:'24', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Não', Ativo:'Sim' },
   ].map(c => ({ ...c, ID_Converso: c.ID }));
 
-  /* Presença de conversos nos últimos domingos de maio */
-  const seed = (id, i) => ((id.charCodeAt(1) + i * 7) % 4 !== 0); // pseudo-aleatório determinístico
+  /*
+   * Padrões de presença demo por converso
+   * Índices: [mai_1..mai_5 | abr_1..abr_4 | jun_1..jun_4]
+   *           0  1  2  3  4   5  6  7  8   9 10 11 12
+   * 1=presente ✅  0=ausente ❌
+   */
+  const PRESENCA = {
+    C01: [1,1,1,0,1, 1,1,0,1, 1,1,0,1], // Regular — falta esporádica
+    C02: [1,1,1,1,1, 1,1,1,1, 1,1,1,1], // Sempre presente ⭐
+    C03: [0,1,1,0,1, 1,0,1,0, 0,1,1,0], // Irregular
+    C04: [1,1,1,1,1, 1,1,1,1, 1,1,1,1], // Sempre presente ⭐
+    C05: [1,0,1,1,0, 1,1,0,1, 1,0,1,1], // Quase sempre
+    C06: [0,0,1,0,0, 0,1,0,0, 0,0,1,0], // Frequência baixa ⚠️
+    C07: [1,1,1,1,1, 1,1,1,1, 1,1,1,1], // Sempre presente ⭐
+    C08: [1,1,0,1,1, 1,0,1,1, 1,1,0,1], // Regular
+    C09: [0,1,0,0,1, 0,1,0,1, 0,1,0,0], // Irregular
+    C10: [1,1,1,1,0, 1,1,1,0, 1,1,1,1], // Bom
+    C11: [1,0,1,1,1, 0,1,1,1, 1,0,1,1], // Bom
+    C12: [0,0,0,1,0, 0,0,1,0, 0,0,0,1], // Recém batizado — ainda irregular
+  };
+
   const freqConv = [];
+  const MAIO_SUNDAYS  = SUNDAYS; // 5 domingos
+  const ABRIL_SUNDAYS = ['05/04/2026','12/04/2026','19/04/2026','26/04/2026'];
+  const JUNHO_SUNDAYS = ['07/06/2026','14/06/2026','21/06/2026','28/06/2026'];
+
   conversos.forEach(c => {
-    SUNDAYS.forEach((ds, i) => {
-      freqConv.push({
-        ID_Frequencia: `FC_${c.ID}_${i}`,
-        ID_Converso:   c.ID_Converso,
-        Nome_Converso: c.Nome_Completo,
-        ID_Unidade:    c.ID_Unidade,
-        Data_Semana:   ds,
-        Presente:      seed(c.ID, i) ? 'Sim' : 'Não',
-        Observacao:    '',
-      });
+    const pat = PRESENCA[c.ID] || [1,1,0,1,1, 1,1,0,1, 1,1,0,1];
+
+    MAIO_SUNDAYS.forEach((ds, i) => {
+      freqConv.push({ ID_Frequencia:`FC_${c.ID}_M${i}`, ID_Converso:c.ID_Converso,
+        Nome_Converso:c.Nome_Completo, ID_Unidade:c.ID_Unidade,
+        Data_Semana:ds, Presente: pat[i] ? 'Sim' : 'Não', Observacao:'' });
     });
-    /* Adiciona também presença em abril para o seletor de mês */
-    const aprilSundays = ['05/04/2026','12/04/2026','19/04/2026','26/04/2026'];
-    aprilSundays.forEach((ds, i) => {
-      freqConv.push({
-        ID_Frequencia: `FC_${c.ID}_A${i}`,
-        ID_Converso:   c.ID_Converso,
-        Nome_Converso: c.Nome_Completo,
-        ID_Unidade:    c.ID_Unidade,
-        Data_Semana:   ds,
-        Presente:      seed(c.ID, i + 10) ? 'Sim' : 'Não',
-        Observacao:    '',
-      });
+    ABRIL_SUNDAYS.forEach((ds, i) => {
+      freqConv.push({ ID_Frequencia:`FC_${c.ID}_A${i}`, ID_Converso:c.ID_Converso,
+        Nome_Converso:c.Nome_Completo, ID_Unidade:c.ID_Unidade,
+        Data_Semana:ds, Presente: pat[i + 5] ? 'Sim' : 'Não', Observacao:'' });
+    });
+    JUNHO_SUNDAYS.forEach((ds, i) => {
+      freqConv.push({ ID_Frequencia:`FC_${c.ID}_J${i}`, ID_Converso:c.ID_Converso,
+        Nome_Converso:c.Nome_Completo, ID_Unidade:c.ID_Unidade,
+        Data_Semana:ds, Presente: pat[i + 9] ? 'Sim' : 'Não', Observacao:'' });
     });
   });
 
@@ -1136,15 +1182,7 @@ function renderFreqChart() {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: {
-          display: !selectedUnit,
-          labels: {
-            color: 'rgba(240,234,214,0.7)',
-            font: { family:'Inter', size: 11 },
-            boxWidth: 12, padding: 14,
-            usePointStyle: true, pointStyleWidth: 8,
-          },
-        },
+        legend: { display: false },
         tooltip: {
           ...tooltipBase(),
           callbacks: {
@@ -1180,6 +1218,31 @@ function renderFreqChart() {
       },
     },
   });
+
+  /* Legenda HTML abaixo do gráfico — 4 itens por linha */
+  renderFreqLegend();
+}
+
+function renderFreqLegend() {
+  const el = g('freq-legend-custom');
+  if (!el) return;
+  if (selectedUnit) { el.innerHTML = ''; return; }
+
+  el.innerHTML = UNITS.map((u, i) => `
+    <div class="freq-leg-item" id="freq-leg-${i}" onclick="toggleFreqDataset(${i})">
+      <span class="freq-leg-dot" style="background:${u.cor}"></span>
+      <span>${u.nome}</span>
+    </div>
+  `).join('');
+}
+
+function toggleFreqDataset(index) {
+  if (!CHARTS.freq) return;
+  const meta = CHARTS.freq.getDatasetMeta(index);
+  meta.hidden = !meta.hidden;
+  CHARTS.freq.update();
+  const item = g(`freq-leg-${index}`);
+  if (item) item.classList.toggle('hidden-ds', meta.hidden);
 }
 
 /* ────────────────────────────────────────────
