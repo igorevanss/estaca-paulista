@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Estaca Paulista — Painel do Sumo Conselho</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ══════════════════════════════════════════════
+   VARIÁVEIS & RESET
+══════════════════════════════════════════════ */
+:root {
+  --bg:       #04203A;
+  --bd:       #062F54;
+  --bm:       #0A4A80;
+  --gold:     #C9A84C;
+  --gold-l:   #E2C97E;
+  --gold-d:   #9E7D30;
+  --cream:    #F7F4EE;
+  --card:     rgba(255,255,255,0.055);
+  --bord:     rgba(201,168,76,0.18);
+  --t1:       #F0EAD6;
+  --t2:       rgba(240,234,214,0.65);
+  --t3:       rgba(240,234,214,0.38);
+  --green:    #81C784;
+  --red-t:    #EF9A9A;
+  --yellow:   #FFD54F;
+  --orange:   #FFAB40;
+  --r: 8px;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  background: var(--bg);
+  color: var(--t1);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ══════════════════════════════════════════════
+   LOADING OVERLAY
+══════════════════════════════════════════════ */
+#loading-overlay {
+  position: fixed; inset: 0;
+  background: rgba(4,32,58,0.96);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 9999; gap: 1.2rem;
+  transition: opacity .45s ease;
+}
+#loading-overlay.hidden { opacity: 0; pointer-events: none; }
+.spinner {
+  width: 52px; height: 52px;
+  border: 3px solid var(--bord);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.load-txt {
+  font-family: 'Cinzel', serif;
+  color: var(--gold-l);
+  font-size: 1rem;
+  letter-spacing: .06em;
+}
+
+/* ══════════════════════════════════════════════
+   HEADER
+══════════════════════════════════════════════ */
+.header {
+  background: linear-gradient(135deg, var(--bd) 0%, #021626 100%);
+  border-bottom: 1px solid var(--bord);
+  padding: .9rem 2rem;
+  position: sticky; top: 0; z-index: 100;
+}
+.header-inner {
+  max-width: 1400px; margin: 0 auto;
+  display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap;
+}
+.emblem {
+  width: 50px; height: 50px;
+  background: radial-gradient(circle at 35% 35%, var(--gold-l), var(--gold-d));
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; flex-shrink: 0;
+  box-shadow: 0 0 22px rgba(201,168,76,.35);
+  color: var(--bd); font-weight: 700;
+}
+.header-text { flex: 1; min-width: 160px; }
+.header-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.2rem; font-weight: 700;
+  color: var(--gold-l); letter-spacing: .05em;
+}
+.header-sub { font-size: .74rem; color: var(--t2); margin-top: .12rem; }
+.header-right {
+  display: flex; flex-direction: column;
+  align-items: flex-end; gap: .45rem;
+}
+.header-date { font-size: .74rem; color: var(--t2); font-style: italic; }
+.filter-sel {
+  background: rgba(10,74,128,.4);
+  border: 1px solid rgba(201,168,76,.35);
+  color: var(--gold-l);
+  font-family: 'Inter', sans-serif; font-size: .8rem; font-weight: 600;
+  padding: .42rem 1.8rem .42rem .7rem;
+  border-radius: 6px; cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23C9A84C'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .6rem center;
+  transition: border-color .2s;
+}
+.filter-sel:focus { outline: none; border-color: var(--gold); }
+.filter-sel option { background: #062F54; color: var(--t1); }
+
+/* ══════════════════════════════════════════════
+   BANNER DE ERRO / AVISO
+══════════════════════════════════════════════ */
+.banner {
+  max-width: 1400px; margin: 0 auto;
+  padding: .65rem 1rem;
+  background: rgba(255,171,64,.1);
+  border: 1px solid rgba(255,171,64,.3);
+  border-radius: var(--r);
+  font-size: .8rem; color: var(--orange);
+  display: none; align-items: center; gap: .7rem;
+}
+.banner.show { display: flex; }
+.btn-retry {
+  display: inline-flex; align-items: center; gap: .3rem;
+  background: rgba(201,168,76,.15);
+  border: 1px solid rgba(201,168,76,.4);
+  color: var(--gold); font-family: 'Inter', sans-serif;
+  font-size: .76rem; font-weight: 600;
+  padding: .3rem .8rem; border-radius: 5px; cursor: pointer;
+  transition: background .2s; flex-shrink: 0;
+}
+.btn-retry:hover { background: rgba(201,168,76,.25); }
+
+/* ══════════════════════════════════════════════
+   CONTAINER & SEÇÕES
+══════════════════════════════════════════════ */
+.wrap { max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
+.section { padding: 1.5rem 0 0; }
+.section:last-of-type { padding-bottom: 2rem; }
+
+.sec-title {
+  font-family: 'Cinzel', serif;
+  font-size: .95rem; font-weight: 600;
+  color: var(--gold-l); letter-spacing: .05em;
+  margin-bottom: .9rem;
+  display: flex; align-items: center; gap: .55rem;
+}
+.sec-title::before {
+  content: '';
+  display: block; width: 3px; height: 1.05em;
+  background: var(--gold); border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════
+   CARDS
+══════════════════════════════════════════════ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--bord);
+  border-radius: var(--r);
+  padding: 1.2rem 1.35rem;
+  animation: fadeUp .4s ease both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ══════════════════════════════════════════════
+   KPI GRID
+══════════════════════════════════════════════ */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 480px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+.kpi-card {
+  background: var(--card);
+  border: 1px solid var(--bord);
+  border-radius: var(--r);
+  padding: 1.3rem 1.15rem;
+  display: flex; flex-direction: column; gap: .3rem;
+  transition: border-color .2s, transform .2s;
+  animation: fadeUp .4s ease both;
+}
+.kpi-card:hover { border-color: rgba(201,168,76,.45); transform: translateY(-2px); }
+.kpi-card:nth-child(1) { animation-delay: .04s; }
+.kpi-card:nth-child(2) { animation-delay: .08s; }
+.kpi-card:nth-child(3) { animation-delay: .12s; }
+.kpi-card:nth-child(4) { animation-delay: .16s; }
+
+.kpi-lbl {
+  font-size: .71rem; color: var(--t3);
+  text-transform: uppercase; letter-spacing: .07em;
+}
+.kpi-val {
+  font-family: 'Cinzel', serif;
+  font-size: 2.5rem; font-weight: 700;
+  color: var(--gold-l); line-height: 1;
+  margin: .15rem 0;
+}
+.kpi-badge {
+  display: inline-flex; align-items: center; gap: .25rem;
+  font-size: .72rem; padding: .22rem .6rem; border-radius: 20px;
+  background: rgba(201,168,76,.1); color: var(--t2);
+  width: fit-content; white-space: nowrap; margin-top: .1rem;
+}
+.kpi-badge.up  { background: rgba(129,199,132,.12); color: var(--green); }
+.kpi-badge.dn  { background: rgba(239,154,154,.12); color: var(--red-t); }
+.kpi-badge.warn { background: rgba(255,171,64,.12);  color: var(--orange); }
+.kpi-badge.crit { background: rgba(239,154,154,.14); color: var(--red-t); }
+.kpi-badge.ok   { background: rgba(129,199,132,.12); color: var(--green); }
+
+/* ══════════════════════════════════════════════
+   LAYOUTS 2 COLUNAS
+══════════════════════════════════════════════ */
+.two-col {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.1rem;
+}
+.two-col-eq {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.1rem;
+}
+@media (max-width: 860px) {
+  .two-col, .two-col-eq { grid-template-columns: 1fr; }
+}
+
+/* ══════════════════════════════════════════════
+   GRÁFICOS
+══════════════════════════════════════════════ */
+.chart-wrap    { position: relative; height: 270px; width: 100%; }
+.chart-wrap-sm { position: relative; height: 210px; width: 100%; }
+
+/* Donuts */
+.donut-row { display: flex; gap: 1.2rem; justify-content: center; margin-bottom: .9rem; }
+.donut-box { display: flex; flex-direction: column; align-items: center; gap: .35rem; flex: 1; max-width: 160px; }
+.donut-wrap { position: relative; height: 130px; width: 130px; }
+.donut-center {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center; pointer-events: none;
+}
+.donut-pct  { font-family: 'Cinzel', serif; font-size: 1.4rem; font-weight: 700; color: var(--t1); }
+.donut-sub  { font-size: .62rem; color: var(--t3); margin-top: .08rem; }
+
+/* ══════════════════════════════════════════════
+   LEGENDA
+══════════════════════════════════════════════ */
+.legend { display: flex; flex-direction: column; gap: .45rem; }
+.leg-item {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: .5rem; font-size: .77rem;
+}
+.leg-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.leg-lbl { flex: 1; color: var(--t2); }
+.leg-val { color: var(--t1); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ══════════════════════════════════════════════
+   ALERTAS
+══════════════════════════════════════════════ */
+.alerts-list {
+  display: flex; flex-direction: column; gap: .55rem;
+  max-height: 300px; overflow-y: auto;
+}
+.alerts-list::-webkit-scrollbar { width: 4px; }
+.alerts-list::-webkit-scrollbar-track { background: transparent; }
+.alerts-list::-webkit-scrollbar-thumb { background: var(--bord); border-radius: 2px; }
+
+.alert-item {
+  display: flex; align-items: flex-start; gap: .65rem;
+  padding: .6rem .75rem; border-radius: 6px;
+  background: rgba(255,255,255,.03);
+  border-left: 3px solid; font-size: .78rem; line-height: 1.4;
+}
+.alert-item.crit { border-color: #EF5350; background: rgba(239,83,80,.07); }
+.alert-item.warn { border-color: #FFD54F; background: rgba(255,213,79,.06); }
+.alert-item.info { border-color: #64B5F6; background: rgba(100,181,246,.06); }
+.alert-icon  { font-size: .95rem; flex-shrink: 0; margin-top: .05rem; }
+.alert-title { font-weight: 600; color: var(--t1); margin-bottom: .12rem; }
+.alert-desc  { color: var(--t2); }
+.no-alerts   {
+  text-align: center; padding: 2rem 1rem;
+  color: var(--t2); font-size: .82rem; line-height: 1.6;
+}
+
+/* ══════════════════════════════════════════════
+   TABELA DE UNIDADES
+══════════════════════════════════════════════ */
+.tbl-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--bord); }
+table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+thead tr { background: rgba(6,47,84,.65); }
+th {
+  padding: .7rem 1rem; text-align: left;
+  font-size: .69rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--gold); border-bottom: 1px solid var(--bord);
+  white-space: nowrap;
+}
+th.c { text-align: center; }
+td {
+  padding: .65rem 1rem;
+  border-bottom: 1px solid rgba(201,168,76,.07);
+  color: var(--t2); vertical-align: middle;
+}
+td.c { text-align: center; }
+tbody tr:hover td { background: rgba(201,168,76,.04); }
+tbody tr:last-child td { border-bottom: none; }
+
+.u-name { color: var(--t1); font-weight: 500; }
+.u-city { font-size: .68rem; color: var(--t3); margin-top: .08rem; }
+
+/* Barra de progresso */
+.prog-bar  { background: rgba(255,255,255,.07); border-radius: 3px; height: 4px; overflow: hidden; margin-top: .35rem; }
+.prog-fill { height: 100%; border-radius: 3px; background: var(--gold); transition: width .5s ease; }
+
+/* Pill de status */
+.pill {
+  display: inline-block; padding: .2rem .62rem; border-radius: 12px;
+  font-size: .68rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
+}
+.pill-regular   { background: rgba(129,199,132,.15); color: #81C784; }
+.pill-atencao   { background: rgba(255,213,79,.15);  color: #FFD54F; }
+.pill-critico   { background: rgba(239,154,154,.15); color: #EF9A9A; }
+.pill-sem-dados { background: rgba(255,255,255,.07); color: var(--t3); }
+
+.tbl-footer { font-size: .71rem; color: var(--t3); margin-top: .55rem; padding: 0 .15rem; }
+
+/* ══════════════════════════════════════════════
+   TABELA DE CONVERSOS (SEÇÃO 5)
+══════════════════════════════════════════════ */
+.conv-ctrl { display: flex; align-items: center; gap: 1rem; margin-bottom: .9rem; flex-wrap: wrap; }
+.month-sel {
+  background: rgba(10,74,128,.35);
+  border: 1px solid var(--bord);
+  color: var(--t2); font-family: 'Inter', sans-serif; font-size: .78rem;
+  padding: .33rem .75rem; border-radius: 5px; cursor: pointer;
+}
+.month-sel option { background: #062F54; }
+.month-sel:focus { outline: none; border-color: var(--gold); }
+
+.conv-tbl-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--bord); }
+.conv-tbl { border-collapse: collapse; font-size: .78rem; width: max-content; min-width: 100%; }
+.conv-tbl th {
+  padding: .55rem .85rem;
+  background: rgba(6,47,84,.65);
+  color: var(--gold); font-size: .67rem;
+  text-transform: uppercase; letter-spacing: .05em;
+  border-bottom: 1px solid var(--bord);
+  white-space: nowrap; text-align: center;
+}
+.conv-tbl th:first-child {
+  text-align: left;
+  position: sticky; left: 0;
+  background: rgba(6,47,84,.95); z-index: 2;
+}
+.conv-tbl td {
+  padding: .5rem .85rem;
+  border-bottom: 1px solid rgba(201,168,76,.07);
+  text-align: center; color: var(--t2);
+}
+.conv-tbl td:first-child {
+  text-align: left;
+  position: sticky; left: 0;
+  background: rgba(4,32,58,.97); z-index: 1; white-space: nowrap;
+}
+.conv-tbl tbody tr:hover td { background: rgba(201,168,76,.04); }
+.conv-tbl tbody tr:hover td:first-child { background: rgba(201,168,76,.07); }
+.p-sim { color: #81C784; font-size: .95rem; }
+.p-nao { color: rgba(239,154,154,.55); font-size: .95rem; }
+.conv-footer { font-size: .71rem; color: var(--t3); margin-top: .55rem; padding: 0 .15rem; }
+
+/* ══════════════════════════════════════════════
+   FOOTER
+══════════════════════════════════════════════ */
+.footer {
+  text-align: center; padding: 2rem;
+  font-size: .7rem; color: rgba(201,168,76,.3);
+  font-family: 'Cinzel', serif; letter-spacing: .05em;
+  border-top: 1px solid rgba(201,168,76,.08);
+  margin-top: 2rem;
+}
+
+/* ══════════════════════════════════════════════
+   RESPONSIVIDADE EXTRA
+══════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .wrap { padding: 0 1rem; }
+  .header { padding: .7rem 1rem; }
+  .header-title { font-size: 1rem; }
+  .kpi-val { font-size: 2rem; }
+  .chart-wrap { height: 210px; }
+  .chart-wrap-sm { height: 170px; }
+  .donut-wrap { width: 110px; height: 110px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     LOADING OVERLAY
+══════════════════════════════════════════ -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="load-txt">Carregando dados da Estaca...</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     CABEÇALHO
+══════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-inner">
+    <div class="emblem">✦</div>
+    <div class="header-text">
+      <div class="header-title">Estaca Paulista</div>
+      <div class="header-sub">Painel de Liderança · Sumo Conselho</div>
+    </div>
+    <div class="header-right">
+      <div class="header-date" id="header-date"></div>
+      <select class="filter-sel" id="filter-unit" onchange="handleFilterChange(this.value)">
+        <option value="">Estaca Paulista (todas as unidades)</option>
+        <option value="ALA_PAULISTA">Ala Paulista</option>
+        <option value="ALA_IGARASSU">Ala Igarassu</option>
+        <option value="ALA_MARANGUAPE">Ala Maranguape</option>
+        <option value="RAMO_ITAMARACA">Ramo Ilha de Itamaracá</option>
+        <option value="ALA_CAETES">Ala Caetés</option>
+        <option value="ALA_GOIANA">Ala Goiana</option>
+        <option value="ALA_ABREU_LIMA">Ala Abreu e Lima</option>
+        <option value="RAMO_TIMBAUBA">Ramo Timbaúba</option>
+      </select>
+    </div>
+  </div>
+</header>
+
+<!-- Banner de aviso -->
+<div class="wrap" style="padding-top:.75rem;padding-bottom:0">
+  <div id="banner" class="banner">
+    <span>⚠️</span>
+    <span id="banner-msg" style="flex:1"></span>
+    <button class="btn-retry" onclick="loadData()">↺ Tentar novamente</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SEÇÃO 1 — KPI CARDS
+══════════════════════════════════════════ -->
+<div class="section wrap">
+  <div class="kpi-grid">
+    <!-- Card 1 -->
+    <div class="kpi-card">
+      <div class="kpi-lbl">Unidades ativas</div>
+      <div class="kpi-val">8</div>
+      <div class="kpi-badge">Estaca completa</div>
+    </div>
+    <!-- Card 2 -->
+    <div class="kpi-card">
+      <div class="kpi-lbl">Conversos em 2026</div>
+      <div class="kpi-val" id="kpi-conv-val">—</div>
+      <div class="kpi-badge" id="kpi-conv-badge">carregando...</div>
+    </div>
+    <!-- Card 3 -->
+    <div class="kpi-card">
+      <div class="kpi-lbl">Presentes neste domingo</div>
+      <div class="kpi-val" id="kpi-freq-val">—</div>
+      <div class="kpi-badge" id="kpi-freq-badge">carregando...</div>
+    </div>
+    <!-- Card 4 -->
+    <div class="kpi-card">
+      <div class="kpi-lbl">Alertas / Status</div>
+      <div class="kpi-val" id="kpi-alert-val">—</div>
+      <div class="kpi-badge" id="kpi-alert-badge">carregando...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SEÇÃO 2 — FREQUÊNCIA + ALERTAS
+══════════════════════════════════════════ -->
+<div class="section wrap">
+  <div class="two-col">
+    <!-- Gráfico de frequência -->
+    <div class="card">
+      <div class="sec-title">Frequência Sacramental — Últimos 5 Domingos</div>
+      <div class="chart-wrap">
+        <canvas id="chart-freq"></canvas>
+      </div>
+    </div>
+    <!-- Painel de alertas -->
+    <div class="card">
+      <div class="sec-title">Alertas Ativos</div>
+      <div id="alerts-list" class="alerts-list">
+        <div class="no-alerts">Carregando alertas...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SEÇÃO 3 — TABELA DE UNIDADES
+══════════════════════════════════════════ -->
+<div class="section wrap">
+  <div class="card" style="padding:1.35rem 1.4rem">
+    <div class="sec-title">Resumo das Unidades</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Unidade</th>
+            <th>Cidade</th>
+            <th>Presentes (domingo atual)</th>
+            <th class="c">Variação</th>
+            <th class="c">Correlação</th>
+            <th class="c">Status</th>
+          </tr>
+        </thead>
+        <tbody id="units-tbody">
+          <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--t3)">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tbl-footer">✅ Correlação ativa e semanal &nbsp;·&nbsp; ⚠️ Irregular &nbsp;·&nbsp; 🔴 Inativa</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SEÇÃO 4 — RETENÇÃO + BATISMOS
+══════════════════════════════════════════ -->
+<div class="section wrap">
+  <div class="two-col-eq">
+    <!-- Retenção e Progresso -->
+    <div class="card">
+      <div class="sec-title">Retenção e Progresso</div>
+      <div class="kpi-badge" id="retention-badge" style="margin-bottom:.85rem">— conversos · 2026</div>
+      <div class="donut-row">
+        <div class="donut-box">
+          <div class="donut-wrap">
+            <canvas id="chart-chamado"></canvas>
+            <div class="donut-center">
+              <div class="donut-pct" id="donut-chamado-pct">—</div>
+              <div class="donut-sub">Com chamado</div>
+            </div>
+          </div>
+        </div>
+        <div class="donut-box">
+          <div class="donut-wrap">
+            <canvas id="chart-sacer"></canvas>
+            <div class="donut-center">
+              <div class="donut-pct" id="donut-sacer-pct">—</div>
+              <div class="donut-sub">Sacerdócio</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="legend" id="retention-legend"></div>
+    </div>
+    <!-- Batismos por Mês -->
+    <div class="card">
+      <div class="sec-title">Batismos por Mês — <span id="ano-batismo">2026</span></div>
+      <div class="kpi-badge" id="batismo-badge" style="margin-bottom:.85rem">Estaca completa</div>
+      <div class="chart-wrap-sm">
+        <canvas id="chart-batismo"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SEÇÃO 5 — PRESENÇA DOS CONVERSOS
+══════════════════════════════════════════ -->
+<div class="section wrap">
+  <div class="card" style="padding:1.35rem 1.4rem">
+    <div class="conv-ctrl">
+      <div class="sec-title" style="margin-bottom:0">Presença dos Conversos — Acompanhamento</div>
+      <select class="month-sel" id="month-sel" onchange="handleMonthChange(this.value)"></select>
+    </div>
+    <div class="conv-tbl-wrap">
+      <table class="conv-tbl">
+        <thead id="conv-thead"></thead>
+        <tbody id="conv-tbody"></tbody>
+      </table>
+    </div>
+    <div class="conv-footer" id="conv-footer">✅ Presente · ❌ Ausente · Mostrando 0 de 0 conversos</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════ -->
+<footer class="footer">
+  A Igreja de Jesus Cristo dos Santos dos Últimos Dias · Estaca Paulista · Sistema desenvolvido para acompanhamento
+</footer>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ────────────────────────────────────────────
+   CONFIGURAÇÃO
+──────────────────────────────────────────── */
+
+// ► MODO DEMONSTRAÇÃO
+//   true  = usa dados fictícios (para apresentações)
+//   false = conecta à planilha real
+const DEMO_MODE = true;
+
+// ► ID DA PLANILHA REAL (só usado quando DEMO_MODE = false)
+//   Cole aqui apenas o código entre /d/ e /edit do link do Google Sheets
+const SHEET_ID = '1B7OIKv71nh8o-SbcMdSullAKeQRQwFYYXHm3WPfhIhc';
+/* ────────────────────────────────────────────
+   DEFINIÇÃO DAS UNIDADES
+──────────────────────────────────────────── */
+const UNITS = [
+  { id:'ALA_PAULISTA',   nome:'Ala Paulista',           tipo:'Ala',  cidade:'Paulista',     cor:'#C9A84C' },
+  { id:'ALA_IGARASSU',   nome:'Ala Igarassu',           tipo:'Ala',  cidade:'Igarassu',     cor:'#64B5F6' },
+  { id:'ALA_MARANGUAPE', nome:'Ala Maranguape',          tipo:'Ala',  cidade:'Paulista',     cor:'#EF5350' },
+  { id:'RAMO_ITAMARACA', nome:'Ramo Ilha de Itamaracá',  tipo:'Ramo', cidade:'Itamaracá',   cor:'#CE93D8' },
+  { id:'ALA_CAETES',     nome:'Ala Caetés',              tipo:'Ala',  cidade:'Abreu e Lima', cor:'#4CAF50' },
+  { id:'ALA_GOIANA',     nome:'Ala Goiana',              tipo:'Ala',  cidade:'Goiana',       cor:'#FF8A65' },
+  { id:'ALA_ABREU_LIMA', nome:'Ala Abreu e Lima',        tipo:'Ala',  cidade:'Abreu e Lima', cor:'#4DB6AC' },
+  { id:'RAMO_TIMBAUBA',  nome:'Ramo Timbaúba',           tipo:'Ramo', cidade:'Timbaúba',    cor:'#F06292' },
+];
+const UMAP = Object.fromEntries(UNITS.map(u => [u.id, u]));
+
+const MESES_EXT  = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const DIAS_EXT   = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+
+/* ────────────────────────────────────────────
+   ESTADO GLOBAL
+──────────────────────────────────────────── */
+let appData      = null;
+let selectedUnit = '';
+let selectedMon  = null; // { year, month }
+let refreshTimer = null;
+const CHARTS     = {};   // cache de instâncias Chart.js
+
+/* ────────────────────────────────────────────
+   PARSER CSV ROBUSTO
+──────────────────────────────────────────── */
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = csvLine(lines[0]);
+  return lines.slice(1)
+    .filter(l => l.trim())
+    .map(line => {
+      const vals = csvLine(line);
+      const obj  = {};
+      headers.forEach((h, i) => { obj[h.trim()] = (vals[i] || '').trim(); });
+      return obj;
+    });
+}
+
+function csvLine(line) {
+  const res = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (c === ',' && !inQ) { res.push(cur); cur = ''; }
+    else cur += c;
+  }
+  res.push(cur);
+  return res;
+}
+
+/* ────────────────────────────────────────────
+   UTILIDADES DE DADOS
+──────────────────────────────────────────── */
+function parseBool(v) {
+  if (v === null || v === undefined) return false;
+  const s = String(v).toLowerCase().trim();
+  return s === 'sim' || s === 'true' || s === '1' || s === 'yes' || s === 's';
+}
+
+function parseDate(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    const [d, m, y] = s.split('/');
+    return new Date(+y, +m - 1, +d);
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const [y, m, d] = s.split('-');
+    return new Date(+y, +m - 1, +d);
+  }
+  const dd = new Date(s);
+  return isNaN(dd.getTime()) ? null : dd;
+}
+
+/* Normaliza qualquer formato de data para DD/MM/AAAA */
+function normDate(v) {
+  const d = parseDate(v);
+  if (!d) return v || '';
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function fmtDateExt(d) {
+  if (!d) return '';
+  return `${DIAS_EXT[d.getDay()]}, ${d.getDate()} de ${MESES_EXT[d.getMonth()]} de ${d.getFullYear()}`;
+}
+
+/* Retorna todos os domingos do mês (year, month 0-based) */
+function sundaysOfMonth(year, month) {
+  const list = [];
+  const d = new Date(year, month, 1);
+  while (d.getDay() !== 0) d.setDate(d.getDate() + 1);
+  while (d.getMonth() === month) {
+    list.push(new Date(d));
+    d.setDate(d.getDate() + 7);
+  }
+  return list;
+}
+
+/* ────────────────────────────────────────────
+   BUSCA DE DADOS NO GOOGLE SHEETS (JSONP)
+   Usa injeção de <script> para contornar o
+   bloqueio de CORS ao abrir de arquivo local.
+──────────────────────────────────────────── */
+function fetchSheet(name) {
+  return new Promise((resolve, reject) => {
+    const cb  = 'gviz_' + Math.random().toString(36).slice(2);
+    const sid = 'gviz_s_' + cb;
+
+    window[cb] = function(res) {
+      try {
+        delete window[cb];
+        document.getElementById(sid)?.remove();
+        resolve(parseGvizTable(res));
+      } catch(e) { reject(e); }
+    };
+
+    const s  = document.createElement('script');
+    s.id     = sid;
+    s.src    = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${cb}&sheet=${encodeURIComponent(name)}`;
+    s.onerror = () => {
+      delete window[cb];
+      reject(new Error(`Falha ao carregar aba "${name}"`));
+    };
+    document.head.appendChild(s);
+  });
+}
+
+/* Converte o formato gviz JSON para array de objetos */
+function parseGvizTable(res) {
+  const table = res && res.table;
+  if (!table || !table.cols || !table.rows) return [];
+  const headers = table.cols.map(c => (c.label || c.id || '').trim());
+  return table.rows
+    .filter(row => row && row.c)
+    .map(row => {
+      const obj = {};
+      headers.forEach((h, i) => {
+        const cell = row.c ? row.c[i] : null;
+        obj[h] = (cell && cell.v !== null && cell.v !== undefined)
+          ? String(cell.v)
+          : '';
+      });
+      return obj;
+    });
+}
+
+async function loadData() {
+  setLoading(true);
+  setBanner(false);
+
+  /* Modo demonstração: pula a conexão e usa dados fictícios */
+  if (DEMO_MODE) {
+    appData = buildDemoData();
+    normalizeAppData();
+    render();
+    setLoading(false);
+    setBanner(true, 'Modo demonstração ativo — dados fictícios. Para conectar à planilha real, defina DEMO_MODE = false no código.');
+    return;
+  }
+
+  try {
+    const [unidades, conversos, relatorios, freqConv] = await Promise.all([
+      fetchSheet('Unidades'),
+      fetchSheet('Conversos'),
+      fetchSheet('Relatorios_Semanais'),
+      fetchSheet('Frequencia_Conversos'),
+    ]);
+    appData = { unidades, conversos, relatorios, freqConv };
+    normalizeAppData();
+    render();
+    setLoading(false);
+  } catch (err) {
+    console.warn('Fallback para dados de demonstração:', err);
+    appData = buildDemoData();
+    normalizeAppData();
+    render();
+    setLoading(false);
+    setBanner(true, 'Não foi possível conectar à planilha. Exibindo dados de demonstração.');
+  }
+  scheduleRefresh();
+}
+
+function normalizeAppData() {
+  appData.relatorios.forEach(r => { r.Data_Semana = normDate(r.Data_Semana); });
+  appData.conversos.forEach(c  => { c.Data_Batismo = normDate(c.Data_Batismo); });
+  appData.freqConv.forEach(f   => { f.Data_Semana  = normDate(f.Data_Semana); });
+}
+
+/* ────────────────────────────────────────────
+   DADOS DE DEMONSTRAÇÃO (FALLBACK)
+──────────────────────────────────────────── */
+function buildDemoData() {
+  const SUNDAYS = ['03/05/2026','10/05/2026','17/05/2026','24/05/2026','31/05/2026'];
+
+  const FREQ = {
+    ALA_PAULISTA:   [95, 98, 102, 99, 106],
+    ALA_IGARASSU:   [74, 70,  68, 72,  71],
+    ALA_MARANGUAPE: [88, 91,  87, 90,  89],
+    RAMO_ITAMARACA: [41, 38,  44, 40,  43],
+    ALA_CAETES:     [120,125, 118,122, 124],
+    ALA_GOIANA:     [62, 58,  55, 53,  51],
+    ALA_ABREU_LIMA: [132,138, 141,137, 143],
+    RAMO_TIMBAUBA:  [55, 58,  60, 57,  85],
+  };
+
+  const CORR = {
+    ALA_PAULISTA:   { ativa: true,  per: 'Semanal' },
+    ALA_IGARASSU:   { ativa: true,  per: 'Quinzenal' },
+    ALA_MARANGUAPE: { ativa: false, per: '' },
+    RAMO_ITAMARACA: { ativa: true,  per: 'Quinzenal' },
+    ALA_CAETES:     { ativa: true,  per: 'Semanal' },
+    ALA_GOIANA:     { ativa: true,  per: 'Semanal' },
+    ALA_ABREU_LIMA: { ativa: true,  per: 'Semanal' },
+    RAMO_TIMBAUBA:  { ativa: true,  per: 'Semanal' },
+  };
+
+  const OBS = {
+    ALA_GOIANA: 'Frequência em queda constante — líderes preocupados com retenção.',
+    ALA_MARANGUAPE: 'Correlação suspensa por ausência do líder missionário. Em resolução.',
+    ALA_IGARASSU: 'Correlação quinzenal por agenda do bispo — previsto retorno semanal em junho.',
+  };
+
+  const relatorios = [];
+  UNITS.forEach(u => {
+    SUNDAYS.forEach((ds, i) => {
+      relatorios.push({
+        ID_Relatorio:                  `${u.id}_S${i}`,
+        ID_Unidade:                    u.id,
+        Data_Semana:                   ds,
+        Membro_Sumo_Conselho:          'Irmão Demo',
+        Lider_Informante:              'Bispo Demo',
+        AC1_Frequencia_Sacramental:    String(FREQ[u.id][i]),
+        AC1_Qtd_Faltantes_Ativos:      String(Math.floor(FREQ[u.id][i] * 0.08)),
+        AC1_Acao_Chegada_Apos_Sacramento: i % 2 === 0 ? 'Sim' : 'Não',
+        AC1_Acao_Nao_Comparecimento:      i % 3 === 0 ? 'Sim' : 'Não',
+        AC2_Correlacao_Acontecendo:    CORR[u.id].ativa ? 'Sim' : 'Não',
+        AC2_Periodicidade:             CORR[u.id].per,
+        AC2_Participantes:             '5',
+        AC2_Tem_LMA:                   'Sim',
+        AC2_Tem_Conselheiro_Designado: 'Sim',
+        AC2_Ultima_Correlacao:         ds,
+        Data_Preenchimento:            ds,
+        Observacoes_Gerais:            (i === 4 && OBS[u.id]) ? OBS[u.id] : '',
+      });
+    });
+  });
+
+  /* Conversos demo — 12 membros representando diversas unidades */
+  const conversos = [
+    { ID:'C01', Nome_Completo:'Maria da Silva',    ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'15/01/2026', Sexo:'F', Idade:'28', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Ativo:'Sim' },
+    { ID:'C02', Nome_Completo:'João Pereira',      ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'22/02/2026', Sexo:'M', Idade:'17', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Sim', Ativo:'Sim' },
+    { ID:'C03', Nome_Completo:'Ana Santos',        ID_Unidade:'ALA_IGARASSU',   Data_Batismo:'05/03/2026', Sexo:'F', Idade:'32', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Ativo:'Sim' },
+    { ID:'C04', Nome_Completo:'Pedro Oliveira',    ID_Unidade:'ALA_CAETES',     Data_Batismo:'10/01/2026', Sexo:'M', Idade:'22', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'Sim', Ativo:'Sim' },
+    { ID:'C05', Nome_Completo:'Carla Ferreira',    ID_Unidade:'ALA_CAETES',     Data_Batismo:'20/02/2026', Sexo:'F', Idade:'25', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Ativo:'Sim' },
+    { ID:'C06', Nome_Completo:'Lucas Lima',        ID_Unidade:'ALA_ABREU_LIMA', Data_Batismo:'08/03/2026', Sexo:'M', Idade:'19', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Não', Ativo:'Sim' },
+    { ID:'C07', Nome_Completo:'Fernanda Costa',    ID_Unidade:'ALA_ABREU_LIMA', Data_Batismo:'15/04/2026', Sexo:'F', Idade:'41', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'',    Ativo:'Sim' },
+    { ID:'C08', Nome_Completo:'Roberto Alves',     ID_Unidade:'ALA_GOIANA',     Data_Batismo:'03/01/2026', Sexo:'M', Idade:'35', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'Sim', Ativo:'Sim' },
+    { ID:'C09', Nome_Completo:'Juliana Melo',      ID_Unidade:'ALA_MARANGUAPE', Data_Batismo:'12/02/2026', Sexo:'F', Idade:'29', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Ativo:'Sim' },
+    { ID:'C10', Nome_Completo:'Diego Souza',       ID_Unidade:'RAMO_TIMBAUBA',  Data_Batismo:'25/01/2026', Sexo:'M', Idade:'16', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Sim', Ativo:'Sim' },
+    { ID:'C11', Nome_Completo:'Tatiane Barbosa',   ID_Unidade:'RAMO_ITAMARACA', Data_Batismo:'18/03/2026', Sexo:'F', Idade:'38', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Ativo:'Sim' },
+    { ID:'C12', Nome_Completo:'Marcos Nunes',      ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'02/05/2026', Sexo:'M', Idade:'24', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Não', Ativo:'Sim' },
+  ].map(c => ({ ...c, ID_Converso: c.ID }));
+
+  /* Presença de conversos nos últimos domingos de maio */
+  const seed = (id, i) => ((id.charCodeAt(1) + i * 7) % 4 !== 0); // pseudo-aleatório determinístico
+  const freqConv = [];
+  conversos.forEach(c => {
+    SUNDAYS.forEach((ds, i) => {
+      freqConv.push({
+        ID_Frequencia: `FC_${c.ID}_${i}`,
+        ID_Converso:   c.ID_Converso,
+        Nome_Converso: c.Nome_Completo,
+        ID_Unidade:    c.ID_Unidade,
+        Data_Semana:   ds,
+        Presente:      seed(c.ID, i) ? 'Sim' : 'Não',
+        Observacao:    '',
+      });
+    });
+    /* Adiciona também presença em abril para o seletor de mês */
+    const aprilSundays = ['05/04/2026','12/04/2026','19/04/2026','26/04/2026'];
+    aprilSundays.forEach((ds, i) => {
+      freqConv.push({
+        ID_Frequencia: `FC_${c.ID}_A${i}`,
+        ID_Converso:   c.ID_Converso,
+        Nome_Converso: c.Nome_Completo,
+        ID_Unidade:    c.ID_Unidade,
+        Data_Semana:   ds,
+        Presente:      seed(c.ID, i + 10) ? 'Sim' : 'Não',
+        Observacao:    '',
+      });
+    });
+  });
+
+  const unidades = UNITS.map(u => ({
+    ID_Unidade: u.id, Nome_Unidade: u.nome,
+    Tipo: u.tipo, Cidade: u.cidade,
+    Lider_Responsavel: 'Líder Demo', Ativo: 'Sim',
+  }));
+
+  return { unidades, conversos, relatorios, freqConv };
+}
+
+/* ────────────────────────────────────────────
+   HELPERS DE FILTRO
+──────────────────────────────────────────── */
+function filtConvs() {
+  const all = appData.conversos.filter(c => parseBool(c.Ativo));
+  return selectedUnit ? all.filter(c => c.ID_Unidade === selectedUnit) : all;
+}
+
+/* Retorna os 5 domingos mais recentes disponíveis nos dados */
+function last5Sundays() {
+  const distinct = [...new Set(appData.relatorios.map(r => r.Data_Semana))];
+  return distinct
+    .map(s => ({ str: s, date: parseDate(s) }))
+    .filter(x => x.date)
+    .sort((a, b) => a.date - b.date)
+    .slice(-5);
+}
+
+function freqForUnit(uid, sundays) {
+  return sundays.map(s => {
+    const r = appData.relatorios.find(r => r.ID_Unidade === uid && r.Data_Semana === s.str);
+    return r ? (parseInt(r.AC1_Frequencia_Sacramental) || 0) : 0;
+  });
+}
+
+function estacaAvgLastSunday(sundays) {
+  if (!sundays.length) return 0;
+  const last = sundays[sundays.length - 1];
+  let tot = 0, cnt = 0;
+  UNITS.forEach(u => {
+    const r = appData.relatorios.find(r => r.ID_Unidade === u.id && r.Data_Semana === last.str);
+    if (r) { tot += parseInt(r.AC1_Frequencia_Sacramental) || 0; cnt++; }
+  });
+  return cnt ? tot / cnt : 0;
+}
+
+/* Calcula o status de uma unidade */
+function calcStatus(uid, sundays) {
+  const reps = appData.relatorios.filter(r => r.ID_Unidade === uid);
+  if (!reps.length) return 'sem-dados';
+  const latest = reps.sort((a, b) => parseDate(b.Data_Semana) - parseDate(a.Data_Semana))[0];
+
+  /* Crítico: correlação inativa */
+  if (!parseBool(latest.AC2_Correlacao_Acontecendo)) return 'critico';
+
+  /* Crítico: frequência caindo 3+ domingos consecutivos */
+  const freqs = freqForUnit(uid, sundays);
+  if (freqs.length >= 3) {
+    const tail = freqs.slice(-3);
+    if (tail[2] < tail[1] && tail[1] < tail[0]) return 'critico';
+  }
+
+  /* Atenção: correlação irregular */
+  const per = (latest.AC2_Periodicidade || '').toLowerCase().trim();
+  if (per && per !== 'semanal') return 'atencao';
+
+  /* Atenção: frequência < 60% da média da estaca */
+  const avg   = estacaAvgLastSunday(sundays);
+  const mine  = freqs[freqs.length - 1] || 0;
+  if (avg > 0 && mine < avg * 0.6) return 'atencao';
+
+  return 'regular';
+}
+
+function statusLabel(s) {
+  return { regular:'Regular', atencao:'Atenção', critico:'Crítico', 'sem-dados':'Sem dados' }[s] || s;
+}
+
+/* ────────────────────────────────────────────
+   RENDER PRINCIPAL
+──────────────────────────────────────────── */
+function render() {
+  if (!appData) return;
+  renderHeaderDate();
+  renderKPIs();
+  renderFreqChart();
+  renderAlerts();
+  renderUnitsTable();
+  renderRetention();
+  renderBaptisms();
+  populateMonthSel();
+  renderConvTable();
+}
+
+/* ────────────────────────────────────────────
+   DATA NO HEADER
+──────────────────────────────────────────── */
+function renderHeaderDate() {
+  const n = new Date();
+  g('header-date').textContent =
+    `${DIAS_EXT[n.getDay()]}, ${n.getDate()} de ${MESES_EXT[n.getMonth()]} de ${n.getFullYear()}`;
+}
+
+/* ────────────────────────────────────────────
+   KPI CARDS
+──────────────────────────────────────────── */
+function renderKPIs() {
+  const now   = new Date();
+  const yr    = now.getFullYear();
+  const mo    = now.getMonth();
+  const convs = filtConvs();
+  const sun   = last5Sundays();
+
+  /* KPI 2 — Conversos */
+  const conv2026 = convs.filter(c => { const d = parseDate(c.Data_Batismo); return d && d.getFullYear() === yr; });
+  const thisMo   = conv2026.filter(c => { const d = parseDate(c.Data_Batismo); return d && d.getMonth() === mo; });
+  g('kpi-conv-val').textContent = conv2026.length || 0;
+  badge('kpi-conv-badge', `↑ ${thisMo.length} batismo${thisMo.length !== 1 ? 's' : ''} em ${MESES_ABREV[mo]}`, 'up');
+
+  /* KPI 3 — Presentes */
+  if (sun.length) {
+    const lastS = sun[sun.length - 1];
+    const prevS = sun.length > 1 ? sun[sun.length - 2] : null;
+    const uList = selectedUnit ? UNITS.filter(u => u.id === selectedUnit) : UNITS;
+    let last = 0, prev = 0;
+    uList.forEach(u => {
+      const rl = appData.relatorios.find(r => r.ID_Unidade === u.id && r.Data_Semana === lastS.str);
+      if (rl) last += parseInt(rl.AC1_Frequencia_Sacramental) || 0;
+      if (prevS) {
+        const rp = appData.relatorios.find(r => r.ID_Unidade === u.id && r.Data_Semana === prevS.str);
+        if (rp) prev += parseInt(rp.AC1_Frequencia_Sacramental) || 0;
+      }
+    });
+    g('kpi-freq-val').textContent = last;
+    const d = last - prev;
+    if (d > 0)      badge('kpi-freq-badge', `↑ +${d} vs domingo ant.`, 'up');
+    else if (d < 0) badge('kpi-freq-badge', `↓ ${d} vs domingo ant.`, 'dn');
+    else             badge('kpi-freq-badge', '= estável vs domingo ant.', '');
+  } else {
+    g('kpi-freq-val').textContent = '—';
+    badge('kpi-freq-badge', 'sem dados', '');
+  }
+
+  /* KPI 4 — Alertas */
+  if (selectedUnit) {
+    const st = calcStatus(selectedUnit, sun);
+    g('kpi-alert-val').textContent = statusLabel(st);
+    const cls = st === 'critico' ? 'crit' : st === 'atencao' ? 'warn' : 'ok';
+    const txt = st === 'critico' ? 'Ação imediata necessária'
+              : st === 'atencao' ? 'Requer acompanhamento'
+              : 'Situação estável';
+    badge('kpi-alert-badge', txt, cls);
+  } else {
+    let crits = 0, warns = 0;
+    UNITS.forEach(u => {
+      const s = calcStatus(u.id, sun);
+      if (s === 'critico') crits++;
+      else if (s === 'atencao') warns++;
+    });
+    g('kpi-alert-val').textContent = crits + warns;
+    if (crits > 0)
+      badge('kpi-alert-badge', `${crits} crítico${crits>1?'s':''} · ${warns} atenção`, 'crit');
+    else if (warns > 0)
+      badge('kpi-alert-badge', `${warns} unidade${warns>1?'s':''} em atenção`, 'warn');
+    else
+      badge('kpi-alert-badge', 'Todas as unidades ok ✅', 'ok');
+  }
+}
+
+/* ────────────────────────────────────────────
+   GRÁFICO DE FREQUÊNCIA (Seção 2)
+──────────────────────────────────────────── */
+function renderFreqChart() {
+  killChart('freq');
+  const sun = last5Sundays();
+  const labels = sun.map(s =>
+    `Dom ${pad(s.date.getDate())}/${pad(s.date.getMonth() + 1)}`
+  );
+
+  let datasets;
+  if (selectedUnit) {
+    const u = UMAP[selectedUnit];
+    datasets = [{
+      label: u.nome,
+      data: freqForUnit(u.id, sun),
+      borderColor: u.cor,
+      backgroundColor: u.cor + '28',
+      fill: true, tension: 0.38,
+      pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5,
+    }];
+  } else {
+    datasets = UNITS.map(u => ({
+      label: u.nome,
+      data: freqForUnit(u.id, sun),
+      borderColor: u.cor,
+      backgroundColor: 'transparent',
+      fill: false, tension: 0.38,
+      pointRadius: 4, pointHoverRadius: 6, borderWidth: 2,
+    }));
+  }
+
+  CHARTS.freq = new Chart(g('chart-freq').getContext('2d'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: !selectedUnit,
+          labels: {
+            color: 'rgba(240,234,214,0.7)',
+            font: { family:'Inter', size: 11 },
+            boxWidth: 12, padding: 14,
+            usePointStyle: true, pointStyleWidth: 8,
+          },
+        },
+        tooltip: {
+          ...tooltipBase(),
+          callbacks: {
+            title: (items) => fmtDateExt(sun[items[0].dataIndex].date),
+            label: (item) => {
+              const prev = item.dataIndex > 0 ? item.dataset.data[item.dataIndex - 1] : null;
+              const cur  = item.parsed.y;
+              let suf = '';
+              if (prev !== null && prev !== undefined) {
+                const d = cur - prev;
+                suf = d > 0 ? ` (+${d})` : d < 0 ? ` (${d})` : ' (=)';
+              }
+              return ` ${item.dataset.label}: ${cur} presentes${suf}`;
+            },
+            labelColor: (item) => ({
+              borderColor: item.dataset.borderColor,
+              backgroundColor: item.dataset.borderColor,
+              borderWidth: 2, borderRadius: 3,
+            }),
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color:'rgba(255,255,255,0.05)' },
+          ticks: { color:'rgba(240,234,214,0.6)', font:{ family:'Inter', size:11 } },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color:'rgba(255,255,255,0.05)' },
+          ticks: { color:'rgba(240,234,214,0.6)', font:{ family:'Inter', size:11 } },
+        },
+      },
+    },
+  });
+}
+
+/* ────────────────────────────────────────────
+   ALERTAS (Seção 2 — direita)
+──────────────────────────────────────────── */
+function renderAlerts() {
+  const sun   = last5Sundays();
+  const avg   = estacaAvgLastSunday(sun);
+  const units = selectedUnit ? UNITS.filter(u => u.id === selectedUnit) : UNITS;
+  const list  = [];
+
+  units.forEach(u => {
+    const reps   = appData.relatorios.filter(r => r.ID_Unidade === u.id);
+    if (!reps.length) return;
+    const latest = reps.sort((a, b) => parseDate(b.Data_Semana) - parseDate(a.Data_Semana))[0];
+
+    /* Crítico — correlação inativa */
+    if (!parseBool(latest.AC2_Correlacao_Acontecendo)) {
+      list.push({ type:'crit', icon:'🔴', title:`${u.nome} — Correlação Inativa`,
+        desc:'A correlação missionária não aconteceu na última semana reportada.' });
+    }
+
+    /* Crítico — queda 3 domingos */
+    const freqs = freqForUnit(u.id, sun);
+    if (freqs.length >= 3) {
+      const t = freqs.slice(-3);
+      if (t[2] < t[1] && t[1] < t[0]) {
+        list.push({ type:'crit', icon:'🔴', title:`${u.nome} — Queda Consecutiva de Frequência`,
+          desc:`Queda há 3 domingos: ${t[0]} → ${t[1]} → ${t[2]} presentes.` });
+      }
+    }
+
+    /* Atenção — correlação irregular */
+    const per = (latest.AC2_Periodicidade || '').toLowerCase().trim();
+    if (parseBool(latest.AC2_Correlacao_Acontecendo) && per && per !== 'semanal') {
+      list.push({ type:'warn', icon:'⚠️', title:`${u.nome} — Correlação Irregular`,
+        desc:`Periodicidade registrada: "${latest.AC2_Periodicidade}" (ideal: semanal).` });
+    }
+
+    /* Atenção — abaixo de 60% da média */
+    const mine = freqs[freqs.length - 1] || 0;
+    if (avg > 0 && mine < avg * 0.6) {
+      list.push({ type:'warn', icon:'⚠️', title:`${u.nome} — Frequência Abaixo da Média`,
+        desc:`${mine} presentes — menos de 60% da média da estaca (${Math.round(avg)}).` });
+    }
+
+    /* Informativo — observações */
+    if (latest.Observacoes_Gerais && latest.Observacoes_Gerais.trim()) {
+      list.push({ type:'info', icon:'ℹ️', title:`${u.nome} — Observação`,
+        desc: latest.Observacoes_Gerais.trim() });
+    }
+  });
+
+  const el = g('alerts-list');
+  if (!list.length) {
+    const un = selectedUnit ? (UMAP[selectedUnit]?.nome || 'esta unidade') : 'a Estaca Paulista';
+    el.innerHTML = `<div class="no-alerts">Nenhum alerta para ${un} ✅<br><span style="font-size:.73rem;color:var(--t3)">Todas as métricas acompanhadas estão dentro do esperado.</span></div>`;
+    return;
+  }
+
+  el.innerHTML = list.map(a => `
+    <div class="alert-item ${a.type}">
+      <div class="alert-icon">${a.icon}</div>
+      <div>
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-desc">${a.desc}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ────────────────────────────────────────────
+   TABELA DE UNIDADES (Seção 3)
+──────────────────────────────────────────── */
+function renderUnitsTable() {
+  const sun   = last5Sundays();
+  const units = selectedUnit ? UNITS.filter(u => u.id === selectedUnit) : UNITS;
+  const tbody = g('units-tbody');
+
+  /* Máximo de frequência para escalar a barra */
+  const maxFreq = Math.max(1, ...UNITS.map(u => {
+    const f = freqForUnit(u.id, sun);
+    return f[f.length - 1] || 0;
+  }));
+
+  tbody.innerHTML = units.map(u => {
+    const freqs  = freqForUnit(u.id, sun);
+    const cur    = freqs[freqs.length - 1] || 0;
+    const prev   = freqs.length > 1 ? freqs[freqs.length - 2] : null;
+    const diff   = prev !== null ? cur - prev : null;
+    const pct    = Math.round((cur / maxFreq) * 100);
+    const st     = calcStatus(u.id, sun);
+
+    const reps   = appData.relatorios.filter(r => r.ID_Unidade === u.id);
+    const latest = reps.sort((a, b) => parseDate(b.Data_Semana) - parseDate(a.Data_Semana))[0];
+    const corrOk = latest && parseBool(latest.AC2_Correlacao_Acontecendo);
+    const corrPer = latest ? (latest.AC2_Periodicidade || '').toLowerCase().trim() : '';
+    const corrIcon = !corrOk ? '🔴' : corrPer === 'semanal' ? '✅' : '⚠️';
+
+    let diffHtml = '<span style="color:var(--t3)">—</span>';
+    if (diff !== null) {
+      if (diff > 0)      diffHtml = `<span style="color:var(--green)">↑ +${diff}</span>`;
+      else if (diff < 0) diffHtml = `<span style="color:var(--red-t)">↓ ${diff}</span>`;
+      else               diffHtml = `<span style="color:var(--t3)">= 0</span>`;
+    }
+
+    return `
+      <tr>
+        <td>
+          <div class="u-name">${u.nome}</div>
+          <div class="u-city">${u.cidade}</div>
+        </td>
+        <td style="color:var(--t2)">${u.cidade}</td>
+        <td>
+          <span style="color:var(--t1);font-weight:600">${cur}</span>
+          <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+        </td>
+        <td class="c">${diffHtml}</td>
+        <td class="c" title="${corrOk ? (corrPer||'Ativa') : 'Inativa'}">${corrIcon}</td>
+        <td class="c"><span class="pill pill-${st}">${statusLabel(st)}</span></td>
+      </tr>`;
+  }).join('');
+}
+
+/* ────────────────────────────────────────────
+   RETENÇÃO — DONUTS (Seção 4 esquerda)
+──────────────────────────────────────────── */
+function renderRetention() {
+  const convs = filtConvs();
+  const tot   = convs.length;
+  const yr    = new Date().getFullYear();
+
+  g('retention-badge').textContent = `${tot} conversos · ${yr}`;
+  g('ano-batismo').textContent     = yr;
+
+  const comChamado = convs.filter(c => parseBool(c.Tem_Chamado)).length;
+  const homens     = convs.filter(c => (c.Sexo||'').toUpperCase() === 'M' && parseInt(c.Idade) >= 12);
+  const comSacer   = homens.filter(c => parseBool(c.Recebeu_Sacerdocio_Aaronico)).length;
+  const comRec     = convs.filter(c => parseBool(c.Tem_Recomendacao_Templo)).length;
+  const comNomes   = convs.filter(c => parseBool(c.Enviou_Nomes_Templo)).length;
+
+  const pctC = tot        > 0 ? Math.round(comChamado / tot        * 100) : 0;
+  const pctS = homens.length > 0 ? Math.round(comSacer  / homens.length * 100) : 0;
+
+  g('donut-chamado-pct').textContent = pctC + '%';
+  g('donut-sacer-pct').textContent   = pctS + '%';
+
+  mkDonut('chart-chamado', pctC, '#2196F3');
+  mkDonut('chart-sacer',   pctS, '#9C27B0');
+
+  g('retention-legend').innerHTML = `
+    <div class="leg-item">
+      <span class="leg-dot" style="background:#2196F3"></span>
+      <span class="leg-lbl">Com chamado ativo</span>
+      <span class="leg-val">${comChamado} / ${tot}</span>
+    </div>
+    <div class="leg-item">
+      <span class="leg-dot" style="background:#9C27B0"></span>
+      <span class="leg-lbl">Sacerdócio Aarônico (masc.)</span>
+      <span class="leg-val">${comSacer} / ${homens.length}</span>
+    </div>
+    <div class="leg-item">
+      <span class="leg-dot" style="background:#C9A84C"></span>
+      <span class="leg-lbl">Recomendação para o Templo</span>
+      <span class="leg-val">${comRec} / ${tot}</span>
+    </div>
+    <div class="leg-item">
+      <span class="leg-dot" style="background:#4CAF50"></span>
+      <span class="leg-lbl">Enviou nomes ao Templo</span>
+      <span class="leg-val">${comNomes} / ${tot}</span>
+    </div>`;
+}
+
+function mkDonut(id, pct, color) {
+  killChart(id);
+  CHARTS[id] = new Chart(g(id).getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [pct, 100 - pct],
+        backgroundColor: [color, 'rgba(255,255,255,0.07)'],
+        borderWidth: 0, hoverBorderWidth: 0,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '72%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false },
+      },
+    },
+  });
+}
+
+/* ────────────────────────────────────────────
+   BATISMOS POR MÊS — BAR CHART (Seção 4 direita)
+──────────────────────────────────────────── */
+function renderBaptisms() {
+  killChart('batismo');
+  const yr    = new Date().getFullYear();
+  const mo    = new Date().getMonth();
+  const convs = filtConvs();
+  const counts = Array(12).fill(0);
+  convs.forEach(c => {
+    const d = parseDate(c.Data_Batismo);
+    if (d && d.getFullYear() === yr) counts[d.getMonth()]++;
+  });
+
+  g('batismo-badge').textContent =
+    selectedUnit ? (UMAP[selectedUnit]?.nome || '') : 'Estaca completa';
+
+  const bgColors = counts.map((_, i) =>
+    i === mo ? 'rgba(201,168,76,0.9)' : 'rgba(201,168,76,0.38)'
+  );
+
+  CHARTS.batismo = new Chart(g('chart-batismo').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: MESES_ABREV,
+      datasets: [{
+        label: 'Batismos',
+        data: counts,
+        backgroundColor: bgColors,
+        borderRadius: 4,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...tooltipBase(),
+          callbacks: {
+            label: (item) => ` ${item.parsed.y} batismo${item.parsed.y !== 1 ? 's' : ''}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color:'rgba(240,234,214,0.6)', font:{ family:'Inter', size:11 } },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color:'rgba(255,255,255,0.05)' },
+          ticks: { color:'rgba(240,234,214,0.6)', font:{ family:'Inter', size:11 }, stepSize:1 },
+        },
+      },
+    },
+    plugins: [{
+      id: 'topLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx, data } = chart;
+        ctx.save();
+        chart.getDatasetMeta(0).data.forEach((bar, i) => {
+          const v = data.datasets[0].data[i];
+          if (!v) return;
+          ctx.fillStyle = 'rgba(240,234,214,0.7)';
+          ctx.font = 'bold 10px Inter';
+          ctx.textAlign = 'center';
+          ctx.fillText(v, bar.x, bar.y - 5);
+        });
+        ctx.restore();
+      },
+    }],
+  });
+}
+
+/* ────────────────────────────────────────────
+   SELETOR DE MÊS (Seção 5)
+──────────────────────────────────────────── */
+function populateMonthSel() {
+  const sel = g('month-sel');
+  const now = new Date();
+  /* Preserva seleção anterior */
+  const prevKey = selectedMon ? `${selectedMon.year}-${selectedMon.month}` : null;
+
+  const opts = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    opts.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: `${MESES_EXT[d.getMonth()]} ${d.getFullYear()}`, year: d.getFullYear(), month: d.getMonth() });
+  }
+
+  sel.innerHTML = opts.map(o => `<option value="${o.key}">${o.label}</option>`).join('');
+
+  const wantedKey = prevKey && opts.some(o => o.key === prevKey)
+    ? prevKey
+    : `${now.getFullYear()}-${now.getMonth()}`;
+
+  sel.value = wantedKey;
+  const chosen = opts.find(o => o.key === sel.value) || opts[opts.length - 1];
+  selectedMon = { year: chosen.year, month: chosen.month };
+}
+
+function handleMonthChange(val) {
+  const [y, m] = val.split('-');
+  selectedMon = { year: parseInt(y), month: parseInt(m) };
+  renderConvTable();
+}
+
+/* ────────────────────────────────────────────
+   TABELA DE PRESENÇA DOS CONVERSOS (Seção 5)
+──────────────────────────────────────────── */
+function renderConvTable() {
+  if (!selectedMon || !appData) return;
+  const { year, month } = selectedMon;
+  const sundays  = sundaysOfMonth(year, month);
+  const convs    = filtConvs();
+  const thead    = g('conv-thead');
+  const tbody    = g('conv-tbody');
+  const totalAll = appData.conversos.filter(c => parseBool(c.Ativo)).length;
+
+  /* Cabeçalho */
+  thead.innerHTML = `<tr>
+    <th>Converso / Unidade</th>
+    ${sundays.map(s =>
+      `<th>Dom ${pad(s.getDate())}/${pad(s.getMonth()+1)}/${s.getFullYear()}</th>`
+    ).join('')}
+  </tr>`;
+
+  if (!convs.length) {
+    tbody.innerHTML = `<tr><td colspan="${sundays.length + 1}" style="text-align:center;padding:1.5rem;color:var(--t3)">Nenhum converso encontrado.</td></tr>`;
+    g('conv-footer').textContent = '✅ Presente · ❌ Ausente · Mostrando 0 de 0 conversos';
+    return;
+  }
+
+  /* Strings de data dos domingos do mês no mesmo formato normalizado */
+  const dstrs = sundays.map(s =>
+    `${pad(s.getDate())}/${pad(s.getMonth()+1)}/${s.getFullYear()}`
+  );
+
+  tbody.innerHTML = convs.map(c => {
+    const unit  = UMAP[c.ID_Unidade];
+    const cells = dstrs.map(ds => {
+      const fr  = appData.freqConv.find(f => f.ID_Converso === c.ID_Converso && f.Data_Semana === ds);
+      const ok  = fr ? parseBool(fr.Presente) : false;
+      return `<td>${ok ? '<span class="p-sim">✅</span>' : '<span class="p-nao">❌</span>'}</td>`;
+    }).join('');
+    return `
+      <tr>
+        <td>
+          <div style="color:var(--t1);font-weight:500">${c.Nome_Completo}</div>
+          <div style="font-size:.67rem;color:var(--t3)">${unit ? unit.nome : c.ID_Unidade}</div>
+        </td>
+        ${cells}
+      </tr>`;
+  }).join('');
+
+  g('conv-footer').textContent =
+    `✅ Presente · ❌ Ausente · Mostrando ${convs.length} de ${totalAll} conversos`;
+}
+
+/* ────────────────────────────────────────────
+   FILTER HANDLER
+──────────────────────────────────────────── */
+function handleFilterChange(val) {
+  selectedUnit = val;
+  render();
+}
+
+/* ────────────────────────────────────────────
+   UTILITÁRIOS GERAIS
+──────────────────────────────────────────── */
+function g(id) { return document.getElementById(id); }
+
+function badge(id, text, cls) {
+  const el = g(id);
+  el.textContent = text;
+  el.className   = 'kpi-badge' + (cls ? ' ' + cls : '');
+}
+
+function killChart(key) {
+  if (CHARTS[key]) { CHARTS[key].destroy(); delete CHARTS[key]; }
+}
+
+function tooltipBase() {
+  return {
+    backgroundColor: 'rgba(2,12,24,0.96)',
+    borderColor: '#C9A84C', borderWidth: 1,
+    titleFont: { family:'Inter', size:13 },
+    bodyFont:  { family:'Inter', size:12 },
+    padding: 12, caretSize: 5,
+    titleColor:  '#E2C97E',
+    bodyColor:   'rgba(240,234,214,0.82)',
+  };
+}
+
+function setLoading(show) {
+  const ov = g('loading-overlay');
+  if (show) ov.classList.remove('hidden');
+  else       ov.classList.add('hidden');
+}
+
+function setBanner(show, msg) {
+  const b  = g('banner');
+  if (show) { g('banner-msg').textContent = msg; b.classList.add('show'); }
+  else        b.classList.remove('show');
+}
+
+function scheduleRefresh() {
+  // Auto-refresh desativado — remova o comentário abaixo para reativar
+  // if (refreshTimer) clearTimeout(refreshTimer);
+  // refreshTimer = setTimeout(loadData, 5 * 60 * 1000); // 5 minutos
+}
+
+/* ────────────────────────────────────────────
+   INICIALIZAÇÃO
+──────────────────────────────────────────── */
+renderHeaderDate();
+loadData();
+</script>
+</body>
+</html>
