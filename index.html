@@ -415,6 +415,34 @@ tbody tr:last-child td { border-bottom: none; }
 .conv-footer { font-size: .71rem; color: var(--t3); margin-top: .55rem; padding: 0 .15rem; }
 
 /* ══════════════════════════════════════════════
+   NOVAS COLUNAS — TABELA DE UNIDADES
+══════════════════════════════════════════════ */
+.resp-td { font-size:.76rem; color:var(--t2); }
+
+.conv-stat { display:flex; flex-direction:column; gap:.1rem; }
+.conv-stat-n { font-size:.8rem; color:var(--t1); font-weight:500; }
+.conv-stat-p { font-size:.7rem; color:var(--t3); }
+.conv-stat-p.ok   { color:var(--green); }
+.conv-stat-p.mid  { color:var(--yellow); }
+.conv-stat-p.low  { color:var(--red-t); }
+
+/* ══════════════════════════════════════════════
+   NOVAS COLUNAS — TABELA DE CONVERSOS
+══════════════════════════════════════════════ */
+.meses-tag {
+  display:inline-block; padding:.13rem .42rem;
+  border-radius:10px; font-size:.71rem; font-weight:600;
+  background:rgba(255,255,255,.07); color:var(--t2);
+}
+.meses-tag.alerta { background:rgba(255,171,64,.16); color:var(--orange); }
+
+.pct-tag { font-size:.76rem; font-weight:600; }
+.pct-tag.green  { color:var(--green); }
+.pct-tag.yellow { color:var(--yellow); }
+.pct-tag.red    { color:var(--red-t); }
+.pct-tag.na     { color:var(--t3); font-weight:400; font-size:.7rem; }
+
+/* ══════════════════════════════════════════════
    FOOTER
 ══════════════════════════════════════════════ */
 .footer {
@@ -552,15 +580,17 @@ tbody tr:last-child td { border-bottom: none; }
         <thead>
           <tr>
             <th>Unidade</th>
+            <th>Responsável</th>
             <th>Cidade</th>
             <th>Presentes (domingo atual)</th>
             <th class="c">Variação</th>
+            <th class="c">Conversos</th>
             <th class="c">Correlação</th>
             <th class="c">Status</th>
           </tr>
         </thead>
         <tbody id="units-tbody">
-          <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--t3)">Carregando...</td></tr>
+          <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--t3)">Carregando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -913,20 +943,22 @@ function buildDemoData() {
     });
   });
 
-  /* Conversos demo — 12 membros representando diversas unidades */
+  /* Conversos demo — 13 membros (C13 com 22 meses p/ testar alerta de limite) */
   const conversos = [
-    { ID:'C01', Nome_Completo:'Maria da Silva',    ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'15/01/2026', Sexo:'F', Idade:'28', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Ativo:'Sim' },
-    { ID:'C02', Nome_Completo:'João Pereira',      ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'22/02/2026', Sexo:'M', Idade:'17', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Sim', Ativo:'Sim' },
-    { ID:'C03', Nome_Completo:'Ana Santos',        ID_Unidade:'ALA_IGARASSU',   Data_Batismo:'05/03/2026', Sexo:'F', Idade:'32', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Ativo:'Sim' },
-    { ID:'C04', Nome_Completo:'Pedro Oliveira',    ID_Unidade:'ALA_CAETES',     Data_Batismo:'10/01/2026', Sexo:'M', Idade:'22', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'Sim', Ativo:'Sim' },
-    { ID:'C05', Nome_Completo:'Carla Ferreira',    ID_Unidade:'ALA_CAETES',     Data_Batismo:'20/02/2026', Sexo:'F', Idade:'25', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Ativo:'Sim' },
-    { ID:'C06', Nome_Completo:'Lucas Lima',        ID_Unidade:'ALA_ABREU_LIMA', Data_Batismo:'08/03/2026', Sexo:'M', Idade:'19', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Não', Ativo:'Sim' },
-    { ID:'C07', Nome_Completo:'Fernanda Costa',    ID_Unidade:'ALA_ABREU_LIMA', Data_Batismo:'15/04/2026', Sexo:'F', Idade:'41', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'',    Ativo:'Sim' },
-    { ID:'C08', Nome_Completo:'Roberto Alves',     ID_Unidade:'ALA_GOIANA',     Data_Batismo:'03/01/2026', Sexo:'M', Idade:'35', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'Sim', Ativo:'Sim' },
-    { ID:'C09', Nome_Completo:'Juliana Melo',      ID_Unidade:'ALA_MARANGUAPE', Data_Batismo:'12/02/2026', Sexo:'F', Idade:'29', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Ativo:'Sim' },
-    { ID:'C10', Nome_Completo:'Diego Souza',       ID_Unidade:'RAMO_TIMBAUBA',  Data_Batismo:'25/01/2026', Sexo:'M', Idade:'16', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Sim', Ativo:'Sim' },
-    { ID:'C11', Nome_Completo:'Tatiane Barbosa',   ID_Unidade:'RAMO_ITAMARACA', Data_Batismo:'18/03/2026', Sexo:'F', Idade:'38', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Ativo:'Sim' },
-    { ID:'C12', Nome_Completo:'Marcos Nunes',      ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'02/05/2026', Sexo:'M', Idade:'24', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Não', Ativo:'Sim' },
+    { ID:'C01', Nome_Completo:'Maria da Silva',    ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'15/01/2026', Sexo:'F', Idade:'28', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C02', Nome_Completo:'João Pereira',      ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'22/02/2026', Sexo:'M', Idade:'17', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C03', Nome_Completo:'Ana Santos',        ID_Unidade:'ALA_IGARASSU',   Data_Batismo:'05/03/2026', Sexo:'F', Idade:'32', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Não', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C04', Nome_Completo:'Pedro Oliveira',    ID_Unidade:'ALA_CAETES',     Data_Batismo:'10/01/2026', Sexo:'M', Idade:'22', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C05', Nome_Completo:'Carla Ferreira',    ID_Unidade:'ALA_CAETES',     Data_Batismo:'20/02/2026', Sexo:'F', Idade:'25', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C06', Nome_Completo:'Lucas Lima',        ID_Unidade:'ALA_ABREU_LIMA', Data_Batismo:'08/03/2026', Sexo:'M', Idade:'19', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Não', Frequentando:'Não', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C07', Nome_Completo:'Fernanda Costa',    ID_Unidade:'ALA_ABREU_LIMA', Data_Batismo:'15/04/2026', Sexo:'F', Idade:'41', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C08', Nome_Completo:'Roberto Alves',     ID_Unidade:'ALA_GOIANA',     Data_Batismo:'03/01/2026', Sexo:'M', Idade:'35', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C09', Nome_Completo:'Juliana Melo',      ID_Unidade:'ALA_MARANGUAPE', Data_Batismo:'12/02/2026', Sexo:'F', Idade:'29', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Não', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C10', Nome_Completo:'Diego Souza',       ID_Unidade:'RAMO_TIMBAUBA',  Data_Batismo:'25/01/2026', Sexo:'M', Idade:'16', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C11', Nome_Completo:'Tatiane Barbosa',   ID_Unidade:'RAMO_ITAMARACA', Data_Batismo:'18/03/2026', Sexo:'F', Idade:'38', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C12', Nome_Completo:'Marcos Nunes',      ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'02/05/2026', Sexo:'M', Idade:'24', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Não', Frequentando:'Não', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    /* C13 — batizado há 22 meses → testa alerta de limite */
+    { ID:'C13', Nome_Completo:'Sandro Barros',     ID_Unidade:'ALA_CAETES',     Data_Batismo:'01/08/2024', Sexo:'M', Idade:'31', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
   ].map(c => ({ ...c, ID_Converso: c.ID }));
 
   /*
@@ -948,6 +980,7 @@ function buildDemoData() {
     C10: [1,1,1,1,0, 1,1,1,0, 1,1,1,1], // Bom
     C11: [1,0,1,1,1, 0,1,1,1, 1,0,1,1], // Bom
     C12: [0,0,0,1,0, 0,0,1,0, 0,0,0,1], // Recém batizado — ainda irregular
+    C13: [1,1,1,1,1, 1,1,1,1, 1,1,1,1], // Sandro — sempre presente, mas chegando nos 24m
   };
 
   const freqConv = [];
@@ -956,7 +989,7 @@ function buildDemoData() {
   const JUNHO_SUNDAYS = ['07/06/2026','14/06/2026','21/06/2026','28/06/2026'];
 
   conversos.forEach(c => {
-    const pat = PRESENCA[c.ID] || [1,1,0,1,1, 1,1,0,1, 1,1,0,1];
+    const pat = PRESENCA[c.ID] || [1,1,1,1,1, 1,1,1,1, 1,1,1,1];
 
     MAIO_SUNDAYS.forEach((ds, i) => {
       freqConv.push({ ID_Frequencia:`FC_${c.ID}_M${i}`, ID_Converso:c.ID_Converso,
@@ -975,10 +1008,22 @@ function buildDemoData() {
     });
   });
 
+  const RESPONSAVEIS = {
+    ALA_PAULISTA:   'Irmão Carlos Mendonça',
+    ALA_IGARASSU:   'Irmão Paulo Rodrigues',
+    ALA_MARANGUAPE: 'Irmão André Lima',
+    RAMO_ITAMARACA: 'Irmão Fábio Nascimento',
+    ALA_CAETES:     'Irmão Renato Ferreira',
+    ALA_GOIANA:     'Irmão Márcio Souza',
+    ALA_ABREU_LIMA: 'Irmão Leonardo Costa',
+    RAMO_TIMBAUBA:  'Irmão Thiago Alves',
+  };
+
   const unidades = UNITS.map(u => ({
     ID_Unidade: u.id, Nome_Unidade: u.nome,
     Tipo: u.tipo, Cidade: u.cidade,
-    Lider_Responsavel: 'Líder Demo', Ativo: 'Sim',
+    Lider_Responsavel: RESPONSAVEIS[u.id] || 'Irmão Demo',
+    Ativo: 'Sim',
   }));
 
   return { unidades, conversos, relatorios, freqConv };
@@ -988,7 +1033,7 @@ function buildDemoData() {
    HELPERS DE FILTRO
 ──────────────────────────────────────────── */
 function filtConvs() {
-  const all = appData.conversos.filter(c => parseBool(c.Ativo));
+  const all = appData.conversos.filter(c => parseBool(c.Ativo) && dentroPrazo(c));
   return selectedUnit ? all.filter(c => c.ID_Unidade === selectedUnit) : all;
 }
 
@@ -1000,6 +1045,51 @@ function last5Sundays() {
     .filter(x => x.date)
     .sort((a, b) => a.date - b.date)
     .slice(-5);
+}
+
+/* ────────────────────────────────────────────
+   HELPERS — NOVOS CAMPOS DE CONVERSOS
+──────────────────────────────────────────── */
+
+/* Verifica se converso está dentro do prazo de 24 meses */
+function dentroPrazo(c) {
+  if (c.Dentro_Prazo !== undefined && c.Dentro_Prazo !== '') return parseBool(c.Dentro_Prazo);
+  const d = parseDate(c.Data_Batismo);
+  if (!d) return false;
+  const limite = new Date(d);
+  limite.setMonth(limite.getMonth() + 24);
+  return new Date() < limite;
+}
+
+/* Meses inteiros desde o batismo */
+function mesesDesdeBatismo(c) {
+  const d = parseDate(c.Data_Batismo);
+  if (!d) return null;
+  const n = new Date();
+  return (n.getFullYear() - d.getFullYear()) * 12 + (n.getMonth() - d.getMonth());
+}
+
+/* % de presença de um converso em um conjunto de domingos (array Date) */
+function calcPctPresenca(convId, sundays) {
+  const dstrs = sundays.map(s => `${pad(s.getDate())}/${pad(s.getMonth()+1)}/${s.getFullYear()}`);
+  const recs  = appData.freqConv.filter(f => f.ID_Converso === convId && dstrs.includes(f.Data_Semana));
+  if (!recs.length) return null;
+  const ok = recs.filter(f => parseBool(f.Presente)).length;
+  return Math.round(ok / recs.length * 100);
+}
+
+/* % médio de presença dos conversos Dentro_Prazo de uma unidade no mês */
+function calcPctPresencaUnit(uid, sundays) {
+  const convs = appData.conversos.filter(c => c.ID_Unidade === uid && parseBool(c.Ativo) && dentroPrazo(c));
+  if (!convs.length) return null;
+  const pcts  = convs.map(c => calcPctPresenca(c.ID_Converso, sundays)).filter(p => p !== null);
+  if (!pcts.length) return null;
+  return Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
+}
+
+/* Mes atual selecionado (com fallback para o mês corrente) */
+function activeMon() {
+  return selectedMon || { year: new Date().getFullYear(), month: new Date().getMonth() };
 }
 
 function freqForUnit(uid, sundays) {
@@ -1058,13 +1148,13 @@ function statusLabel(s) {
 function render() {
   if (!appData) return;
   renderHeaderDate();
+  populateMonthSel();   // ← primeiro, para selectedMon estar disponível em todo render
   renderKPIs();
   renderFreqChart();
   renderAlerts();
   renderUnitsTable();
   renderRetention();
   renderBaptisms();
-  populateMonthSel();
   renderConvTable();
 }
 
@@ -1294,6 +1384,39 @@ function renderAlerts() {
       list.push({ type:'info', icon:'ℹ️', title:`${u.nome} — Observação`,
         desc: latest.Observacoes_Gerais.trim() });
     }
+
+    /* MOD 4 — Conversos sem nenhuma presença no mês atual */
+    const mon      = activeMon();
+    const monSuns  = sundaysOfMonth(mon.year, mon.month);
+    const monLabel = MESES_EXT[mon.month];
+    const convsDp  = appData.conversos.filter(c =>
+      c.ID_Unidade === u.id && parseBool(c.Ativo) && dentroPrazo(c));
+    const semPresenca = convsDp.filter(c => {
+      const pct = calcPctPresenca(c.ID_Converso, monSuns);
+      return pct !== null && pct === 0;
+    });
+    if (semPresenca.length > 0) {
+      const nomes = semPresenca.slice(0, 3).map(c => c.Nome_Completo);
+      const resto = semPresenca.length > 3 ? ` e mais ${semPresenca.length - 3}` : '';
+      list.push({ type:'warn', icon:'⚠️',
+        title:`${u.nome} — Conversos Sem Presença em ${monLabel}`,
+        desc: nomes.join(', ') + resto + '.' });
+    }
+
+    /* MOD 5 — Conversos chegando nos 24 meses */
+    const proxLimite = convsDp.filter(c => {
+      const m = mesesDesdeBatismo(c);
+      return m !== null && m >= 20 && m < 24;
+    });
+    if (proxLimite.length > 0) {
+      const lista = proxLimite
+        .sort((a, b) => mesesDesdeBatismo(b) - mesesDesdeBatismo(a))
+        .map(c => `${c.Nome_Completo} (${mesesDesdeBatismo(c)}m)`)
+        .join(', ');
+      list.push({ type:'info', icon:'⏰',
+        title:`${u.nome} — Conversos Próximos do Limite (24 meses)`,
+        desc: lista });
+    }
   });
 
   const el = g('alerts-list');
@@ -1328,6 +1451,10 @@ function renderUnitsTable() {
     return f[f.length - 1] || 0;
   }));
 
+  /* Mês ativo para % de presença dos conversos */
+  const mon      = activeMon();
+  const monSuns  = sundaysOfMonth(mon.year, mon.month);
+
   tbody.innerHTML = units.map(u => {
     const freqs  = freqForUnit(u.id, sun);
     const cur    = freqs[freqs.length - 1] || 0;
@@ -1342,6 +1469,27 @@ function renderUnitsTable() {
     const corrPer = latest ? (latest.AC2_Periodicidade || '').toLowerCase().trim() : '';
     const corrIcon = !corrOk ? '🔴' : corrPer === 'semanal' ? '✅' : '⚠️';
 
+    /* Responsável */
+    const uData = appData.unidades.find(x => x.ID_Unidade === u.id);
+    const resp  = uData ? (uData.Lider_Responsavel || '—') : '—';
+
+    /* Conversos Dentro_Prazo + % presença */
+    const convsDp   = appData.conversos.filter(c => c.ID_Unidade === u.id && parseBool(c.Ativo) && dentroPrazo(c));
+    const nConvs    = convsDp.length;
+    const pctConvs  = calcPctPresencaUnit(u.id, monSuns);
+    let convStatHtml;
+    if (nConvs === 0) {
+      convStatHtml = `<div class="conv-stat"><span class="conv-stat-n">0 conv.</span></div>`;
+    } else if (pctConvs === null) {
+      convStatHtml = `<div class="conv-stat"><span class="conv-stat-n">${nConvs} conv.</span></div>`;
+    } else {
+      const cls = pctConvs >= 75 ? 'ok' : pctConvs >= 50 ? 'mid' : 'low';
+      convStatHtml = `<div class="conv-stat">
+        <span class="conv-stat-n">${nConvs} conv.</span>
+        <span class="conv-stat-p ${cls}">${pctConvs}% presença</span>
+      </div>`;
+    }
+
     let diffHtml = '<span style="color:var(--t3)">—</span>';
     if (diff !== null) {
       if (diff > 0)      diffHtml = `<span style="color:var(--green)">↑ +${diff}</span>`;
@@ -1355,12 +1503,14 @@ function renderUnitsTable() {
           <div class="u-name">${u.nome}</div>
           <div class="u-city">${u.cidade}</div>
         </td>
+        <td class="resp-td">${resp}</td>
         <td style="color:var(--t2)">${u.cidade}</td>
         <td>
           <span style="color:var(--t1);font-weight:600">${cur}</span>
           <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
         </td>
         <td class="c">${diffHtml}</td>
+        <td>${convStatHtml}</td>
         <td class="c" title="${corrOk ? (corrPer||'Ativa') : 'Inativa'}">${corrIcon}</td>
         <td class="c"><span class="pill pill-${st}">${statusLabel(st)}</span></td>
       </tr>`;
@@ -1560,13 +1710,15 @@ function renderConvTable() {
   /* Cabeçalho */
   thead.innerHTML = `<tr>
     <th>Converso / Unidade</th>
+    <th class="c">Meses</th>
+    <th class="c">% Mês</th>
     ${sundays.map(s =>
       `<th>Dom ${pad(s.getDate())}/${pad(s.getMonth()+1)}/${s.getFullYear()}</th>`
     ).join('')}
   </tr>`;
 
   if (!convs.length) {
-    tbody.innerHTML = `<tr><td colspan="${sundays.length + 1}" style="text-align:center;padding:1.5rem;color:var(--t3)">Nenhum converso encontrado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${sundays.length + 3}" style="text-align:center;padding:1.5rem;color:var(--t3)">Nenhum converso encontrado.</td></tr>`;
     g('conv-footer').textContent = '✅ Presente · ❌ Ausente · Mostrando 0 de 0 conversos';
     return;
   }
@@ -1578,17 +1730,37 @@ function renderConvTable() {
 
   tbody.innerHTML = convs.map(c => {
     const unit  = UMAP[c.ID_Unidade];
+
+    /* Coluna Meses */
+    const m    = mesesDesdeBatismo(c);
+    const mTag = m === null ? '<span class="meses-tag">—</span>'
+               : `<span class="meses-tag${m >= 20 ? ' alerta' : ''}">${m}m</span>`;
+
+    /* Coluna % Presença no mês */
+    const pct = calcPctPresenca(c.ID_Converso, sundays);
+    let pctTag;
+    if (pct === null) {
+      pctTag = '<span class="pct-tag na">s/d</span>';
+    } else {
+      const cls = pct >= 75 ? 'green' : pct >= 50 ? 'yellow' : 'red';
+      pctTag = `<span class="pct-tag ${cls}">${pct}%</span>`;
+    }
+
+    /* Colunas de domingo */
     const cells = dstrs.map(ds => {
       const fr  = appData.freqConv.find(f => f.ID_Converso === c.ID_Converso && f.Data_Semana === ds);
       const ok  = fr ? parseBool(fr.Presente) : false;
       return `<td>${ok ? '<span class="p-sim">✅</span>' : '<span class="p-nao">❌</span>'}</td>`;
     }).join('');
+
     return `
       <tr>
         <td>
           <div style="color:var(--t1);font-weight:500">${c.Nome_Completo}</div>
           <div style="font-size:.67rem;color:var(--t3)">${unit ? unit.nome : c.ID_Unidade}</div>
         </td>
+        <td class="c">${mTag}</td>
+        <td class="c">${pctTag}</td>
         ${cells}
       </tr>`;
   }).join('');
