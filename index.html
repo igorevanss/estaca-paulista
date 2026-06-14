@@ -144,8 +144,10 @@ body {
    CONTAINER & SEÇÕES
 ══════════════════════════════════════════════ */
 .wrap { max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
-.section { padding: 1.5rem 0 0; }
-.section:last-of-type { padding-bottom: 2rem; }
+/* Espaçamento vertical entre seções via margin (não padding) para não
+   conflitar com o padding horizontal de .wrap no mesmo elemento */
+.section { margin-top: 1.75rem; }
+.section:last-of-type { margin-bottom: 2.5rem; }
 
 .sec-title {
   font-family: 'Cinzel', serif;
@@ -258,13 +260,16 @@ body {
 .two-col {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 1.1rem;
+  gap: 1.25rem;
 }
 .two-col-eq {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.1rem;
+  gap: 1.25rem;
 }
+/* Itens de grid podem encolher abaixo da largura intrínseca do conteúdo
+   (evita que o canvas do gráfico force overflow horizontal ao redimensionar) */
+.two-col > *, .two-col-eq > * { min-width: 0; }
 @media (max-width: 860px) {
   .two-col, .two-col-eq { grid-template-columns: 1fr; }
 }
@@ -274,6 +279,8 @@ body {
 ══════════════════════════════════════════════ */
 .chart-wrap    { position: relative; height: 270px; width: 100%; }
 .chart-wrap-sm { position: relative; height: 210px; width: 100%; }
+/* O canvas nunca pode ultrapassar o container (reforço contra overflow no resize) */
+.chart-wrap canvas, .chart-wrap-sm canvas { max-width: 100%; }
 
 /* Donuts */
 .donut-row { display: flex; gap: 1.2rem; justify-content: center; margin-bottom: .9rem; }
@@ -350,6 +357,17 @@ td.c { text-align: center; }
 tbody tr:hover td { background: rgba(201,168,76,.04); }
 tbody tr:last-child td { border-bottom: none; }
 
+/* Primeira coluna (Unidade) fixa ao rolar lateralmente */
+.tbl-wrap th:first-child {
+  position: sticky; left: 0; z-index: 3; background: var(--bd);
+}
+.tbl-wrap td:first-child {
+  position: sticky; left: 0; z-index: 2; background: var(--bg);
+}
+.tbl-wrap tbody tr:hover td:first-child {
+  background: linear-gradient(rgba(201,168,76,.04), rgba(201,168,76,.04)), var(--bg);
+}
+
 .u-name { color: var(--t1); font-weight: 500; }
 .u-city { font-size: .68rem; color: var(--t3); margin-top: .08rem; }
 
@@ -396,7 +414,7 @@ tbody tr:last-child td { border-bottom: none; }
 .conv-tbl th:first-child {
   text-align: left;
   position: sticky; left: 0;
-  background: rgba(6,47,84,.95); z-index: 2;
+  background: var(--bd); z-index: 3;
 }
 .conv-tbl td {
   padding: .5rem .85rem;
@@ -406,10 +424,12 @@ tbody tr:last-child td { border-bottom: none; }
 .conv-tbl td:first-child {
   text-align: left;
   position: sticky; left: 0;
-  background: rgba(4,32,58,.97); z-index: 1; white-space: nowrap;
+  background: var(--bg); z-index: 2; white-space: nowrap;
 }
 .conv-tbl tbody tr:hover td { background: rgba(201,168,76,.04); }
-.conv-tbl tbody tr:hover td:first-child { background: rgba(201,168,76,.07); }
+.conv-tbl tbody tr:hover td:first-child {
+  background: linear-gradient(rgba(201,168,76,.07), rgba(201,168,76,.07)), var(--bg);
+}
 .p-sim { color: #81C784; font-size: .95rem; }
 .p-nao { color: rgba(239,154,154,.55); font-size: .95rem; }
 .conv-footer { font-size: .71rem; color: var(--t3); margin-top: .55rem; padding: 0 .15rem; }
@@ -585,12 +605,14 @@ tbody tr:last-child td { border-bottom: none; }
             <th>Presentes (domingo atual)</th>
             <th class="c">Variação</th>
             <th class="c">Conversos</th>
-            <th class="c">Correlação</th>
+            <th class="c">Correlação Missionária</th>
+            <th class="c">Caminho do Convênio</th>
+            <th class="c">Correlação Templo/Família</th>
             <th class="c">Status</th>
           </tr>
         </thead>
         <tbody id="units-tbody">
-          <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--t3)">Carregando...</td></tr>
+          <tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--t3)">Carregando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -936,6 +958,8 @@ function buildDemoData() {
         AC2_Participantes:             '5',
         AC2_Tem_LMA:                   'Sim',
         AC2_Tem_Conselheiro_Designado: 'Sim',
+        AC2_Usa_Caminho_Convenio:      (u.id === 'ALA_GOIANA'     && i === 4) ? 'Não' : 'Sim',
+        AC3_Correlacao_Templo_Familia: (u.id === 'ALA_MARANGUAPE' && i === 4) ? 'Não' : 'Sim',
         AC2_Ultima_Correlacao:         ds,
         Data_Preenchimento:            ds,
         Observacoes_Gerais:            (i === 4 && OBS[u.id]) ? OBS[u.id] : '',
@@ -945,20 +969,20 @@ function buildDemoData() {
 
   /* Conversos demo — 13 membros (C13 com 22 meses p/ testar alerta de limite) */
   const conversos = [
-    { ID:'C01', Nome_Completo:'Maria da Silva',    ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'15/01/2026', Sexo:'F', Idade:'28', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
-    { ID:'C02', Nome_Completo:'João Pereira',      ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'22/02/2026', Sexo:'M', Idade:'17', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
-    { ID:'C03', Nome_Completo:'Ana Santos',        ID_Unidade:'ALA_IGARASSU',   Data_Batismo:'05/03/2026', Sexo:'F', Idade:'32', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Não', Dentro_Prazo:'TRUE', Ativo:'Sim' },
-    { ID:'C04', Nome_Completo:'Pedro Oliveira',    ID_Unidade:'ALA_CAETES',     Data_Batismo:'10/01/2026', Sexo:'M', Idade:'22', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
-    { ID:'C05', Nome_Completo:'Carla Ferreira',    ID_Unidade:'ALA_CAETES',     Data_Batismo:'20/02/2026', Sexo:'F', Idade:'25', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
-    { ID:'C06', Nome_Completo:'Lucas Lima',        ID_Unidade:'ALA_ABREU_LIMA', Data_Batismo:'08/03/2026', Sexo:'M', Idade:'19', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Não', Frequentando:'Não', Dentro_Prazo:'TRUE', Ativo:'Sim' },
-    { ID:'C07', Nome_Completo:'Fernanda Costa',    ID_Unidade:'ALA_ABREU_LIMA', Data_Batismo:'15/04/2026', Sexo:'F', Idade:'41', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
-    { ID:'C08', Nome_Completo:'Roberto Alves',     ID_Unidade:'ALA_GOIANA',     Data_Batismo:'03/01/2026', Sexo:'M', Idade:'35', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
-    { ID:'C09', Nome_Completo:'Juliana Melo',      ID_Unidade:'ALA_MARANGUAPE', Data_Batismo:'12/02/2026', Sexo:'F', Idade:'29', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Não', Dentro_Prazo:'TRUE', Ativo:'Sim' },
-    { ID:'C10', Nome_Completo:'Diego Souza',       ID_Unidade:'RAMO_TIMBAUBA',  Data_Batismo:'25/01/2026', Sexo:'M', Idade:'16', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
-    { ID:'C11', Nome_Completo:'Tatiane Barbosa',   ID_Unidade:'RAMO_ITAMARACA', Data_Batismo:'18/03/2026', Sexo:'F', Idade:'38', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
-    { ID:'C12', Nome_Completo:'Marcos Nunes',      ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'02/05/2026', Sexo:'M', Idade:'24', Tem_Chamado:'Não', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Não', Frequentando:'Não', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C01', Nome_Completo:'Maria da Silva',    ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'15/01/2026', Sexo:'F', Idade:'28', Tem_Chamado:'Sim', Qual_Chamado:'Professora na Escola Dominical', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C02', Nome_Completo:'João Pereira',      ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'22/02/2026', Sexo:'M', Idade:'17', Tem_Chamado:'Sim', Qual_Chamado:'Secretário do Quórum de Élderes', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C03', Nome_Completo:'Ana Santos',        ID_Unidade:'ALA_IGARASSU',   Data_Batismo:'05/03/2026', Sexo:'F', Idade:'32', Tem_Chamado:'Não', Qual_Chamado:'', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Não', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C04', Nome_Completo:'Pedro Oliveira',    ID_Unidade:'ALA_CAETES',     Data_Batismo:'10/01/2026', Sexo:'M', Idade:'22', Tem_Chamado:'Sim', Qual_Chamado:'Líder dos Rapazes', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C05', Nome_Completo:'Carla Ferreira',    ID_Unidade:'ALA_CAETES',     Data_Batismo:'20/02/2026', Sexo:'F', Idade:'25', Tem_Chamado:'Sim', Qual_Chamado:'Professora da Primária', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C06', Nome_Completo:'Lucas Lima',        ID_Unidade:'ALA_ABREU_LIMA', Data_Batismo:'08/03/2026', Sexo:'M', Idade:'19', Tem_Chamado:'Não', Qual_Chamado:'', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Não', Frequentando:'Não', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C07', Nome_Completo:'Fernanda Costa',    ID_Unidade:'ALA_ABREU_LIMA', Data_Batismo:'15/04/2026', Sexo:'F', Idade:'41', Tem_Chamado:'Sim', Qual_Chamado:'Coordenadora Missionária', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C08', Nome_Completo:'Roberto Alves',     ID_Unidade:'ALA_GOIANA',     Data_Batismo:'03/01/2026', Sexo:'M', Idade:'35', Tem_Chamado:'Sim', Qual_Chamado:'Secretário Executivo', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Sim', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C09', Nome_Completo:'Juliana Melo',      ID_Unidade:'ALA_MARANGUAPE', Data_Batismo:'12/02/2026', Sexo:'F', Idade:'29', Tem_Chamado:'Não', Qual_Chamado:'', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Não', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C10', Nome_Completo:'Diego Souza',       ID_Unidade:'RAMO_TIMBAUBA',  Data_Batismo:'25/01/2026', Sexo:'M', Idade:'16', Tem_Chamado:'Sim', Qual_Chamado:'Professor da Escola Dominical', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C11', Nome_Completo:'Tatiane Barbosa',   ID_Unidade:'RAMO_ITAMARACA', Data_Batismo:'18/03/2026', Sexo:'F', Idade:'38', Tem_Chamado:'Não', Qual_Chamado:'', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'',    Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C12', Nome_Completo:'Marcos Nunes',      ID_Unidade:'ALA_PAULISTA',   Data_Batismo:'02/05/2026', Sexo:'M', Idade:'24', Tem_Chamado:'Não', Qual_Chamado:'', Tem_Recomendacao_Templo:'Não', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Não', Frequentando:'Não', Dentro_Prazo:'TRUE', Ativo:'Sim' },
     /* C13 — batizado há 22 meses → testa alerta de limite */
-    { ID:'C13', Nome_Completo:'Sandro Barros',     ID_Unidade:'ALA_CAETES',     Data_Batismo:'01/08/2024', Sexo:'M', Idade:'31', Tem_Chamado:'Sim', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
+    { ID:'C13', Nome_Completo:'Sandro Barros',     ID_Unidade:'ALA_CAETES',     Data_Batismo:'01/08/2024', Sexo:'M', Idade:'31', Tem_Chamado:'Sim', Qual_Chamado:'Líder de Música', Tem_Recomendacao_Templo:'Sim', Enviou_Nomes_Templo:'Não', Recebeu_Sacerdocio_Aaronico:'Sim', Frequentando:'Sim', Dentro_Prazo:'TRUE', Ativo:'Sim' },
   ].map(c => ({ ...c, ID_Converso: c.ID }));
 
   /*
@@ -1379,6 +1403,24 @@ function renderAlerts() {
         desc:`${mine} presentes — menos de 60% da média da estaca (${Math.round(avg)}).` });
     }
 
+    /* MOD 2a — Caminho do Convênio não utilizado */
+    const caminhoConv = latest.AC2_Usa_Caminho_Convenio;
+    if (caminhoConv !== undefined && caminhoConv !== null
+        && String(caminhoConv).trim() !== '' && !parseBool(caminhoConv)) {
+      list.push({ type:'warn', icon:'⚠️',
+        title:`${u.nome} — Caminho do Convênio Não Utilizado`,
+        desc:'A reunião de correlação e conselho de ala não está utilizando o Caminho do Convênio na semana mais recente reportada.' });
+    }
+
+    /* MOD 2b — Correlação Templo/História da Família pendente */
+    const corrTemplo = latest.AC3_Correlacao_Templo_Familia;
+    if (corrTemplo !== undefined && corrTemplo !== null
+        && String(corrTemplo).trim() !== '' && !parseBool(corrTemplo)) {
+      list.push({ type:'warn', icon:'⚠️',
+        title:`${u.nome} — Correlação Templo/História da Família Pendente`,
+        desc:'A correlação de Templo e História da Família não está acontecendo com a periodicidade mínima quinzenal.' });
+    }
+
     /* Informativo — observações */
     if (latest.Observacoes_Gerais && latest.Observacoes_Gerais.trim()) {
       list.push({ type:'info', icon:'ℹ️', title:`${u.nome} — Observação`,
@@ -1469,6 +1511,13 @@ function renderUnitsTable() {
     const corrPer = latest ? (latest.AC2_Periodicidade || '').toLowerCase().trim() : '';
     const corrIcon = !corrOk ? '🔴' : corrPer === 'semanal' ? '✅' : '⚠️';
 
+    /* Ícone tri-estado (Sim ✅ · Não ❌ · vazio —) com tooltip por estado */
+    const triIcon = (v, t) => (v === undefined || v === null || String(v).trim() === '')
+      ? `<span title="${t.vazio}" style="color:var(--t3)">—</span>`
+      : (parseBool(v) ? `<span title="${t.sim}">✅</span>` : `<span title="${t.nao}">❌</span>`);
+    const caminhoConv = latest ? latest.AC2_Usa_Caminho_Convenio : '';
+    const corrTemplo  = latest ? latest.AC3_Correlacao_Templo_Familia : '';
+
     /* Responsável */
     const uData = appData.unidades.find(x => x.ID_Unidade === u.id);
     const resp  = uData ? (uData.Lider_Responsavel || '—') : '—';
@@ -1512,6 +1561,14 @@ function renderUnitsTable() {
         <td class="c">${diffHtml}</td>
         <td>${convStatHtml}</td>
         <td class="c" title="${corrOk ? (corrPer||'Ativa') : 'Inativa'}">${corrIcon}</td>
+        <td class="c">${triIcon(caminhoConv, {
+          sim:'Utiliza o Caminho do Convênio',
+          nao:'Não utiliza o Caminho do Convênio',
+          vazio:'Sem dado para esta unidade' })}</td>
+        <td class="c" title="Mínimo quinzenal">${triIcon(corrTemplo, {
+          sim:'Correlação de Templo e História da Família em dia',
+          nao:'Correlação de Templo/História da Família pendente',
+          vazio:'Sem dado para esta unidade' })}</td>
         <td class="c"><span class="pill pill-${st}">${statusLabel(st)}</span></td>
       </tr>`;
   }).join('');
@@ -1528,6 +1585,7 @@ function renderRetention() {
   g('retention-badge').textContent = `${tot} conversos · ${yr}`;
   g('ano-batismo').textContent     = yr;
 
+  const frequentando = convs.filter(c => parseBool(c.Frequentando)).length;
   const comChamado = convs.filter(c => parseBool(c.Tem_Chamado)).length;
   const homens     = convs.filter(c => (c.Sexo||'').toUpperCase() === 'M' && parseInt(c.Idade) >= 12);
   const comSacer   = homens.filter(c => parseBool(c.Recebeu_Sacerdocio_Aaronico)).length;
@@ -1544,6 +1602,11 @@ function renderRetention() {
   mkDonut('chart-sacer',   pctS, '#9C27B0');
 
   g('retention-legend').innerHTML = `
+    <div class="leg-item">
+      <span class="leg-dot" style="background:#26A69A"></span>
+      <span class="leg-lbl">Frequentando atualmente</span>
+      <span class="leg-val">${frequentando} / ${tot}</span>
+    </div>
     <div class="leg-item">
       <span class="leg-dot" style="background:#2196F3"></span>
       <span class="leg-lbl">Com chamado ativo</span>
@@ -1753,11 +1816,17 @@ function renderConvTable() {
       return `<td>${ok ? '<span class="p-sim">✅</span>' : '<span class="p-nao">❌</span>'}</td>`;
     }).join('');
 
+    /* Chamado do converso (apenas quando preenchido) */
+    const chamadoLine = (c.Qual_Chamado && c.Qual_Chamado.trim())
+      ? `<div style="font-size:.67rem;color:var(--gold)">📋 ${c.Qual_Chamado}</div>`
+      : '';
+
     return `
       <tr>
         <td>
           <div style="color:var(--t1);font-weight:500">${c.Nome_Completo}</div>
           <div style="font-size:.67rem;color:var(--t3)">${unit ? unit.nome : c.ID_Unidade}</div>
+          ${chamadoLine}
         </td>
         <td class="c">${mTag}</td>
         <td class="c">${pctTag}</td>
