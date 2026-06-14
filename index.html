@@ -338,6 +338,28 @@ body {
    TABELA DE UNIDADES
 ══════════════════════════════════════════════ */
 .tbl-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--bord); }
+
+/* Barra de rolagem horizontal das tabelas — escura, no tema da página, mas visível */
+.tbl-wrap, .conv-tbl-wrap {
+  scrollbar-width: thin;                                  /* Firefox */
+  scrollbar-color: rgba(201,168,76,.5) rgba(255,255,255,.06);
+}
+.tbl-wrap::-webkit-scrollbar,
+.conv-tbl-wrap::-webkit-scrollbar { height: 9px; }
+.tbl-wrap::-webkit-scrollbar-track,
+.conv-tbl-wrap::-webkit-scrollbar-track {
+  background: rgba(255,255,255,.06);
+  border-radius: 0 0 var(--r) var(--r);
+}
+.tbl-wrap::-webkit-scrollbar-thumb,
+.conv-tbl-wrap::-webkit-scrollbar-thumb {
+  background: rgba(201,168,76,.5); border-radius: 5px;
+  border: 2px solid transparent; background-clip: padding-box;
+}
+.tbl-wrap::-webkit-scrollbar-thumb:hover,
+.conv-tbl-wrap::-webkit-scrollbar-thumb:hover { background: rgba(201,168,76,.8); background-clip: padding-box; }
+.tbl-wrap::-webkit-scrollbar-corner,
+.conv-tbl-wrap::-webkit-scrollbar-corner { background: transparent; }
 table { width: 100%; border-collapse: collapse; font-size: .8rem; }
 thead tr { background: rgba(6,47,84,.65); }
 th {
