@@ -1383,7 +1383,16 @@
 
       function parseDate(v) {
         if (!v) return null
+        if (v instanceof Date) return isNaN(v.getTime()) ? null : v
         const s = String(v).trim()
+
+        // Formato GVIZ: Date(2026,6,12) ou Date(2026,6,12,0,0,0)
+        const gviz = s.match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)$/)
+        if (gviz) {
+          const [, y, m, d, h, mi, se] = gviz
+          return new Date(+y, +m, +d, +(h || 0), +(mi || 0), +(se || 0))
+        }
+
         if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
           const [d, m, y] = s.split('/')
           return new Date(+y, +m - 1, +d)
@@ -1921,7 +1930,7 @@
 ──────────────────────────────────────────── */
       function filtConvs() {
         const all = appData.conversos.filter(
-          c => parseBool(c.Ativo) && dentroPrazo(c)
+          c => dentroPrazo(c)
         )
         return selectedUnit
           ? all.filter(c => c.ID_Unidade === selectedUnit)
@@ -1982,7 +1991,7 @@
       /* % médio de presença dos conversos Dentro_Prazo de uma unidade no mês */
       function calcPctPresencaUnit(uid, sundays) {
         const convs = appData.conversos.filter(
-          c => c.ID_Unidade === uid && parseBool(c.Ativo) && dentroPrazo(c)
+          c => c.ID_Unidade === uid && dentroPrazo(c)
         )
         if (!convs.length) return null
         const pcts = convs
@@ -2431,7 +2440,7 @@
           const monSuns = sundaysOfMonth(mon.year, mon.month)
           const monLabel = MESES_EXT[mon.month]
           const convsDp = appData.conversos.filter(
-            c => c.ID_Unidade === u.id && parseBool(c.Ativo) && dentroPrazo(c)
+            c => c.ID_Unidade === u.id && dentroPrazo(c)
           )
           const semPresenca = convsDp.filter(c => {
             const pct = calcPctPresenca(c.ID_Converso, monSuns)
@@ -2557,7 +2566,7 @@
 
             /* Conversos Dentro_Prazo + % presença */
             const convsDp = appData.conversos.filter(
-              c => c.ID_Unidade === u.id && parseBool(c.Ativo) && dentroPrazo(c)
+              c => c.ID_Unidade === u.id && dentroPrazo(c)
             )
             const nConvs = convsDp.length
             const pctConvs = calcPctPresencaUnit(u.id, monSuns)
@@ -2846,9 +2855,7 @@
         const convs = filtConvs()
         const thead = g('conv-thead')
         const tbody = g('conv-tbody')
-        const totalAll = appData.conversos.filter(c =>
-          parseBool(c.Ativo)
-        ).length
+        const totalAll = appData.conversos.filter(c => dentroPrazo(c)).length
 
         /* Cabeçalho */
         thead.innerHTML = `<tr>
