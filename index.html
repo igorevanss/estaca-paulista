@@ -1215,7 +1215,7 @@
       // ► MODO DEMONSTRAÇÃO
       //   true  = usa dados fictícios (para apresentações)
       //   false = conecta à planilha real
-      const DEMO_MODE = true
+      const DEMO_MODE = false
 
       // ► ID DA PLANILHA REAL (só usado quando DEMO_MODE = false)
       //   Cole aqui apenas o código entre /d/ e /edit do link do Google Sheets
@@ -2075,8 +2075,22 @@
           const r = appData.relatorios.find(
             r => r.ID_Unidade === uid && r.Data_Semana === s.str
           )
-          return r ? parseInt(r.AC1_Frequencia_Sacramental) || 0 : 0
+          /* Domingo sem relatório = sem dado (null), nunca zero */
+          return r ? parseInt(r.AC1_Frequencia_Sacramental) || 0 : null
         })
+      }
+
+      /* Frequências dos relatórios da própria unidade, em ordem cronológica.
+         Usado onde importa o histórico real da unidade (e não o calendário
+         global de domingos): tabela, status e alertas de queda. */
+      function ownFreqSeries(uid) {
+        return appData.relatorios
+          .filter(r => r.ID_Unidade === uid)
+          .sort((a, b) => parseDate(a.Data_Semana) - parseDate(b.Data_Semana))
+          .map(r => ({
+            data: r.Data_Semana,
+            freq: parseInt(r.AC1_Frequencia_Sacramental) || 0
+          }))
       }
 
       function estacaAvgLastSunday(sundays) {
@@ -2107,10 +2121,10 @@
         /* Crítico: correlação inativa */
         if (!parseBool(latest.AC2_Correlacao_Acontecendo)) return 'critico'
 
-        /* Crítico: frequência caindo 3+ domingos consecutivos */
-        const freqs = freqForUnit(uid, sundays)
-        if (freqs.length >= 3) {
-          const tail = freqs.slice(-3)
+        /* Crítico: frequência caindo 3+ relatórios consecutivos (da própria unidade) */
+        const vals = ownFreqSeries(uid).map(x => x.freq)
+        if (vals.length >= 3) {
+          const tail = vals.slice(-3)
           if (tail[2] < tail[1] && tail[1] < tail[0]) return 'critico'
         }
 
@@ -2118,10 +2132,17 @@
         const per = (latest.AC2_Periodicidade || '').toLowerCase().trim()
         if (per && per !== 'semanal') return 'atencao'
 
-        /* Atenção: frequência < 60% da média da estaca */
-        const avg = estacaAvgLastSunday(sundays)
-        const mine = freqs[freqs.length - 1] || 0
-        if (avg > 0 && mine < avg * 0.6) return 'atencao'
+        /* Atenção: frequência < 60% da média da estaca
+           (só compara se a unidade reportou o domingo mais recente) */
+        const lastSun = sundays.length ? sundays[sundays.length - 1] : null
+        const rLast = lastSun
+          ? reps.find(r => r.Data_Semana === lastSun.str)
+          : null
+        if (rLast) {
+          const avg = estacaAvgLastSunday(sundays)
+          const mine = parseInt(rLast.AC1_Frequencia_Sacramental) || 0
+          if (avg > 0 && mine < avg * 0.6) return 'atencao'
+        }
 
         return 'regular'
       }
@@ -2315,6 +2336,8 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            /* Domingos sem relatório (null) não derrubam a linha para zero */
+            spanGaps: true,
             interaction: { mode: 'index', intersect: false },
             plugins: {
               legend: { display: false },
@@ -2423,10 +2446,10 @@
             })
           }
 
-          /* Crítico — queda 3 domingos */
-          const freqs = freqForUnit(u.id, sun)
-          if (freqs.length >= 3) {
-            const t = freqs.slice(-3)
+          /* Crítico — queda em 3 relatórios consecutivos da própria unidade */
+          const vals = ownFreqSeries(u.id).map(x => x.freq)
+          if (vals.length >= 3) {
+            const t = vals.slice(-3)
             if (t[2] < t[1] && t[1] < t[0]) {
               list.push({
                 type: 'crit',
@@ -2452,15 +2475,22 @@
             })
           }
 
-          /* Atenção — abaixo de 60% da média */
-          const mine = freqs[freqs.length - 1] || 0
-          if (avg > 0 && mine < avg * 0.6) {
-            list.push({
-              type: 'warn',
-              icon: '⚠️',
-              title: `${u.nome} — Frequência Abaixo da Média`,
-              desc: `${mine} presentes — menos de 60% da média da estaca (${Math.round(avg)}).`
-            })
+          /* Atenção — abaixo de 60% da média
+             (só compara se a unidade reportou o domingo mais recente) */
+          const lastSun = sun.length ? sun[sun.length - 1] : null
+          const rLast = lastSun
+            ? reps.find(r => r.Data_Semana === lastSun.str)
+            : null
+          if (rLast) {
+            const mine = parseInt(rLast.AC1_Frequencia_Sacramental) || 0
+            if (avg > 0 && mine < avg * 0.6) {
+              list.push({
+                type: 'warn',
+                icon: '⚠️',
+                title: `${u.nome} — Frequência Abaixo da Média`,
+                desc: `${mine} presentes — menos de 60% da média da estaca (${Math.round(avg)}).`
+              })
+            }
           }
 
           /* MOD 2a — Caminho do Convênio não utilizado */
@@ -2581,14 +2611,15 @@
           : UNITS
         const tbody = g('units-tbody')
 
-        /* Máximo de frequência para escalar a barra */
+        /* Máximo de frequência para escalar a barra (último relatório de cada unidade) */
         const maxFreq = Math.max(
           1,
           ...UNITS.map(u => {
-            const f = freqForUnit(u.id, sun)
-            return f[f.length - 1] || 0
+            const s = ownFreqSeries(u.id)
+            return s.length ? s[s.length - 1].freq : 0
           })
         )
+        const lastGlobal = sun.length ? sun[sun.length - 1].str : null
 
         /* Mês ativo para % de presença dos conversos */
         const mon = activeMon()
@@ -2596,11 +2627,21 @@
 
         tbody.innerHTML = units
           .map(u => {
-            const freqs = freqForUnit(u.id, sun)
-            const cur = freqs[freqs.length - 1] || 0
-            const prev = freqs.length > 1 ? freqs[freqs.length - 2] : null
-            const diff = prev !== null ? cur - prev : null
-            const pct = Math.round((cur / maxFreq) * 100)
+            /* Presentes/variação vêm dos relatórios da própria unidade —
+               informação preenchida na planilha sempre aparece, mesmo que a
+               unidade não tenha reportado o domingo global mais recente */
+            const serie = ownFreqSeries(u.id)
+            const curRep = serie.length ? serie[serie.length - 1] : null
+            const prevRep = serie.length > 1 ? serie[serie.length - 2] : null
+            const cur = curRep ? curRep.freq : null
+            const prev = prevRep ? prevRep.freq : null
+            const diff = cur !== null && prev !== null ? cur - prev : null
+            const pct =
+              cur !== null ? Math.round((cur / maxFreq) * 100) : 0
+            const dataHint =
+              curRep && lastGlobal && curRep.data !== lastGlobal
+                ? `<div class="u-city">em ${curRep.data.slice(0, 5)}</div>`
+                : ''
             const st = calcStatus(u.id, sun)
 
             const reps = appData.relatorios.filter(r => r.ID_Unidade === u.id)
@@ -2674,8 +2715,12 @@
         <td class="resp-td">${resp}</td>
         <td style="color:var(--t2)">${u.cidade}</td>
         <td>
-          <span style="color:var(--t1);font-weight:600">${cur}</span>
-          <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+          ${
+            cur === null
+              ? '<span style="color:var(--t3)">—</span>'
+              : `<span style="color:var(--t1);font-weight:600">${cur}</span>${dataHint}
+          <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>`
+          }
         </td>
         <td class="c">${diffHtml}</td>
         <td>${convStatHtml}</td>
