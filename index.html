@@ -2093,6 +2093,27 @@
           }))
       }
 
+      /* Série para o GRÁFICO: preenche os domingos sem relatório com o valor
+         real mais próximo (para frente e para trás), de modo que uma unidade
+         com um único relatório ainda desenhe uma linha contínua em vez de uma
+         bolinha solta. `radii` marca só os pontos reais (onde vai a bolinha).
+         Unidade sem nenhum relatório fica toda null (nem linha, nem ponto). */
+      function freqLineData(uid, sundays) {
+        const raw = freqForUnit(uid, sundays)
+        const filled = raw.slice()
+        let last = null
+        for (let i = 0; i < filled.length; i++) {
+          if (filled[i] !== null) last = filled[i]
+          else if (last !== null) filled[i] = last
+        }
+        last = null
+        for (let i = filled.length - 1; i >= 0; i--) {
+          if (filled[i] !== null) last = filled[i]
+          else if (last !== null) filled[i] = last
+        }
+        return { filled, radii: raw.map(v => v !== null) }
+      }
+
       function estacaAvgLastSunday(sundays) {
         if (!sundays.length) return 0
         const last = sundays[sundays.length - 1]
@@ -2303,31 +2324,35 @@
         let datasets
         if (selectedUnit) {
           const u = UMAP[selectedUnit]
+          const { filled, radii } = freqLineData(u.id, sun)
           datasets = [
             {
               label: u.nome,
-              data: freqForUnit(u.id, sun),
+              data: filled,
               borderColor: u.cor,
               backgroundColor: u.cor + '28',
               fill: true,
               tension: 0.38,
-              pointRadius: 5,
-              pointHoverRadius: 7,
+              pointRadius: radii.map(r => (r ? 5 : 0)),
+              pointHoverRadius: radii.map(r => (r ? 7 : 0)),
               borderWidth: 2.5
             }
           ]
         } else {
-          datasets = UNITS.map(u => ({
-            label: u.nome,
-            data: freqForUnit(u.id, sun),
-            borderColor: u.cor,
-            backgroundColor: 'transparent',
-            fill: false,
-            tension: 0.38,
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            borderWidth: 2
-          }))
+          datasets = UNITS.map(u => {
+            const { filled, radii } = freqLineData(u.id, sun)
+            return {
+              label: u.nome,
+              data: filled,
+              borderColor: u.cor,
+              backgroundColor: 'transparent',
+              fill: false,
+              tension: 0.38,
+              pointRadius: radii.map(r => (r ? 4 : 0)),
+              pointHoverRadius: radii.map(r => (r ? 6 : 0)),
+              borderWidth: 2
+            }
+          })
         }
 
         CHARTS.freq = new Chart(g('chart-freq').getContext('2d'), {
