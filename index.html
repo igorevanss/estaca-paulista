@@ -995,7 +995,7 @@
             <option value="ALA_CAETES">Ala Caetés</option>
             <option value="ALA_GOIANA">Ala Goiana</option>
             <option value="ALA_ABREU_LIMA">Ala Abreu e Lima</option>
-            <option value="RAMO_TIMBAUBA">Ramo Timbaúba</option>
+            <option value="ALA_TIMBAUBA">Ramo Timbaúba</option>
           </select>
         </div>
       </div>
@@ -1020,8 +1020,8 @@
         <!-- Card 1 -->
         <div class="kpi-card">
           <div class="kpi-lbl">Unidades ativas</div>
-          <div class="kpi-val">8</div>
-          <div class="kpi-badge">Estaca completa</div>
+          <div class="kpi-val" id="kpi-unid-val">—</div>
+          <div class="kpi-badge" id="kpi-unid-badge">carregando...</div>
         </div>
         <!-- Card 2 -->
         <div class="kpi-card">
@@ -1215,7 +1215,7 @@
       // ► MODO DEMONSTRAÇÃO
       //   true  = usa dados fictícios (para apresentações)
       //   false = conecta à planilha real
-      const DEMO_MODE = false
+      const DEMO_MODE = true
 
       // ► ID DA PLANILHA REAL (só usado quando DEMO_MODE = false)
       //   Cole aqui apenas o código entre /d/ e /edit do link do Google Sheets
@@ -1274,7 +1274,7 @@
           cor: '#4DB6AC'
         },
         {
-          id: 'RAMO_TIMBAUBA',
+          id: 'ALA_TIMBAUBA',
           nome: 'Ramo Timbaúba',
           tipo: 'Ramo',
           cidade: 'Timbaúba',
@@ -1282,6 +1282,61 @@
         }
       ]
       const UMAP = Object.fromEntries(UNITS.map(u => [u.id, u]))
+
+      /* Cores fixas por unidade (estáveis entre carregamentos) e paleta
+         reserva para unidades novas criadas na planilha */
+      const CORES_UNIDADES = Object.fromEntries(UNITS.map(u => [u.id, u.cor]))
+      const PALETA_EXTRA = [
+        '#FFD54F',
+        '#7986CB',
+        '#A1887F',
+        '#90A4AE',
+        '#AED581',
+        '#BA68C8'
+      ]
+
+      /* Reconstrói UNITS/UMAP/dropdown a partir da aba Unidades (Ativo=Sim).
+         Se a aba vier vazia (ou falhar), mantém a lista embutida acima. */
+      function syncUnitsFromData() {
+        if (!appData || !appData.unidades || !appData.unidades.length) return
+        const ativos = appData.unidades.filter(
+          u => u.ID_Unidade && parseBool(u.Ativo)
+        )
+        if (!ativos.length) return
+
+        let extra = 0
+        const novos = ativos.map(u => ({
+          id: u.ID_Unidade,
+          nome: u.Nome_Unidade || u.ID_Unidade,
+          tipo: u.Tipo || '',
+          cidade: u.Cidade || '',
+          cor:
+            CORES_UNIDADES[u.ID_Unidade] ||
+            PALETA_EXTRA[extra++ % PALETA_EXTRA.length]
+        }))
+
+        UNITS.length = 0
+        UNITS.push(...novos)
+        Object.keys(UMAP).forEach(k => delete UMAP[k])
+        novos.forEach(u => (UMAP[u.id] = u))
+
+        /* Dropdown do filtro — preserva a seleção atual se ainda existir */
+        const sel = g('filter-unit')
+        if (sel) {
+          const atual = sel.value
+          sel.innerHTML =
+            '<option value="">Estaca Paulista (todas as unidades)</option>' +
+            novos
+              .map(u => `<option value="${u.id}">${u.nome}</option>`)
+              .join('')
+          if (atual && UMAP[atual]) {
+            sel.value = atual
+          } else {
+            sel.value = ''
+            selectedUnit = ''
+          }
+        }
+      }
 
       const MESES_EXT = [
         'Janeiro',
@@ -1455,7 +1510,10 @@
 
           const s = document.createElement('script')
           s.id = sid
-          s.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${cb}&sheet=${encodeURIComponent(name)}`
+          /* headers=1 força a linha 1 como cabeçalho — sem isso, abas onde todas
+             as células são texto (ex.: Unidades) voltam com labels vazios e o
+             cabeçalho vira linha de dados */
+          s.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${cb}&headers=1&sheet=${encodeURIComponent(name)}`
           s.onerror = () => {
             delete window[cb]
             reject(new Error(`Falha ao carregar aba "${name}"`))
@@ -1538,6 +1596,7 @@
         appData.freqConv.forEach(f => {
           f.Data_Semana = normDate(f.Data_Semana)
         })
+        syncUnitsFromData()
       }
 
       /* ────────────────────────────────────────────
@@ -1560,7 +1619,7 @@
           ALA_CAETES: [120, 125, 118, 122, 124],
           ALA_GOIANA: [62, 58, 55, 53, 51],
           ALA_ABREU_LIMA: [132, 138, 141, 137, 143],
-          RAMO_TIMBAUBA: [55, 58, 60, 57, 85]
+          ALA_TIMBAUBA: [55, 58, 60, 57, 85]
         }
 
         const CORR = {
@@ -1571,7 +1630,7 @@
           ALA_CAETES: { ativa: true, per: 'Semanal' },
           ALA_GOIANA: { ativa: true, per: 'Semanal' },
           ALA_ABREU_LIMA: { ativa: true, per: 'Semanal' },
-          RAMO_TIMBAUBA: { ativa: true, per: 'Semanal' }
+          ALA_TIMBAUBA: { ativa: true, per: 'Semanal' }
         }
 
         const OBS = {
@@ -1763,7 +1822,7 @@
           {
             ID: 'C10',
             Nome_Completo: 'Diego Souza',
-            ID_Unidade: 'RAMO_TIMBAUBA',
+            ID_Unidade: 'ALA_TIMBAUBA',
             Data_Batismo: '25/01/2026',
             Sexo: 'M',
             Idade: '16',
@@ -1910,7 +1969,7 @@
           ALA_CAETES: 'Irmão Renato Ferreira',
           ALA_GOIANA: 'Irmão Márcio Souza',
           ALA_ABREU_LIMA: 'Irmão Leonardo Costa',
-          RAMO_TIMBAUBA: 'Irmão Thiago Alves'
+          ALA_TIMBAUBA: 'Irmão Thiago Alves'
         }
 
         const unidades = UNITS.map(u => ({
@@ -2112,6 +2171,17 @@
         const mo = now.getMonth()
         const convs = filtConvs()
         const sun = last5Sundays()
+
+        /* KPI 1 — Unidades ativas (contadas da aba Unidades) */
+        g('kpi-unid-val').textContent = UNITS.length
+        const nAlas = UNITS.filter(u => (u.tipo || '').toLowerCase() === 'ala')
+          .length
+        const nRamos = UNITS.length - nAlas
+        badge(
+          'kpi-unid-badge',
+          `${nAlas} ala${nAlas !== 1 ? 's' : ''} · ${nRamos} ramo${nRamos !== 1 ? 's' : ''}`,
+          ''
+        )
 
         /* KPI 2 — Conversos */
         const conv2026 = convs.filter(c => {
@@ -2559,6 +2629,9 @@
             const corrTemplo = latest
               ? latest.AC3_Correlacao_Templo_Familia
               : ''
+            const nomeLMA = latest
+              ? String(latest.AC2_Nome_LMA || '').trim()
+              : ''
 
             /* Responsável */
             const uData = appData.unidades.find(x => x.ID_Unidade === u.id)
@@ -2606,7 +2679,7 @@
         </td>
         <td class="c">${diffHtml}</td>
         <td>${convStatHtml}</td>
-        <td class="c" title="${corrOk ? corrPer || 'Ativa' : 'Inativa'}">${corrIcon}</td>
+        <td class="c" title="${(corrOk ? corrPer || 'Ativa' : 'Inativa') + (nomeLMA ? ' · LMA: ' + nomeLMA : '')}">${corrIcon}</td>
         <td class="c">${triIcon(caminhoConv, {
           sim: 'Utiliza o Caminho do Convênio',
           nao: 'Não utiliza o Caminho do Convênio',
