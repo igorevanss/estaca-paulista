@@ -982,6 +982,15 @@
         </div>
         <div class="header-right">
           <div class="header-date" id="header-date"></div>
+          <button
+            class="btn-retry"
+            onclick="loadData()"
+            title="Atualizar dados"
+            aria-label="Atualizar dados"
+            style="padding: 0.3rem 0.62rem; font-size: 0.9rem"
+          >
+            ↻
+          </button>
           <select
             class="filter-sel"
             id="filter-unit"
@@ -2079,14 +2088,34 @@
         )
       }
 
-      /* % de presença de um converso em um conjunto de domingos (array Date) */
+      /* Domingo (00:00) da semana em que a data cai. Normaliza um registro
+         lançado em qualquer dia (seg–sáb) para o domingo correspondente. */
+      function domingoDaSemana(d) {
+        if (!d) return null
+        const x = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+        x.setDate(x.getDate() - x.getDay())
+        return x
+      }
+      function mesmaSemana(a, b) {
+        const da = domingoDaSemana(a),
+          db = domingoDaSemana(b)
+        return !!da && !!db && da.getTime() === db.getTime()
+      }
+
+      /* Registro de frequência de um converso na semana de um domingo (ou null).
+         Tolera datas lançadas em outro dia da mesma semana. */
+      function freqNaSemana(convId, sunday) {
+        return appData.freqConv.find(
+          f =>
+            f.ID_Converso === convId &&
+            mesmaSemana(parseDate(f.Data_Semana), sunday)
+        )
+      }
+
+      /* % de presença de um converso em um conjunto de domingos (array Date).
+         Denominador = domingos com registro (presente ou ausente). */
       function calcPctPresenca(convId, sundays) {
-        const dstrs = sundays.map(
-          s => `${pad(s.getDate())}/${pad(s.getMonth() + 1)}/${s.getFullYear()}`
-        )
-        const recs = appData.freqConv.filter(
-          f => f.ID_Converso === convId && dstrs.includes(f.Data_Semana)
-        )
+        const recs = sundays.map(s => freqNaSemana(convId, s)).filter(Boolean)
         if (!recs.length) return null
         const ok = recs.filter(f => parseBool(f.Presente)).length
         return Math.round((ok / recs.length) * 100)
@@ -2972,9 +3001,25 @@
           ? `${selectedMon.year}-${selectedMon.month}`
           : null
 
+        /* Mês mais antigo com dados de frequência (ou 5 meses atrás, o que
+           for mais antigo) até o mês atual — assim o histórico fica acessível
+           mesmo que passe de 6 meses. */
+        let inicio = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+        ;(appData?.freqConv || []).forEach(f => {
+          const d = parseDate(f.Data_Semana)
+          if (d) {
+            const primeiro = new Date(d.getFullYear(), d.getMonth(), 1)
+            if (primeiro < inicio) inicio = primeiro
+          }
+        })
+
         const opts = []
-        for (let i = 5; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        const cursor = new Date(now.getFullYear(), now.getMonth(), 1)
+        for (
+          let d = new Date(cursor);
+          d >= inicio;
+          d.setMonth(d.getMonth() - 1)
+        ) {
           opts.push({
             key: `${d.getFullYear()}-${d.getMonth()}`,
             label: `${MESES_EXT[d.getMonth()]} ${d.getFullYear()}`,
@@ -3036,14 +3081,9 @@
         if (!convs.length) {
           tbody.innerHTML = `<tr><td colspan="${sundays.length + 3}" style="text-align:center;padding:1.5rem;color:var(--t3)">Nenhum converso encontrado.</td></tr>`
           g('conv-footer').textContent =
-            '✅ Presente · ❌ Ausente · Mostrando 0 de 0 conversos'
+            '✅ Presente · ❌ Ausente · (·) sem registro · Mostrando 0 de 0 conversos'
           return
         }
-
-        /* Strings de data dos domingos do mês no mesmo formato normalizado */
-        const dstrs = sundays.map(
-          s => `${pad(s.getDate())}/${pad(s.getMonth() + 1)}/${s.getFullYear()}`
-        )
 
         tbody.innerHTML = convs
           .map(c => {
@@ -3056,26 +3096,31 @@
                 ? '<span class="meses-tag">—</span>'
                 : `<span class="meses-tag${m >= 20 ? ' alerta' : ''}">${m}m</span>`
 
-            /* Coluna % Presença no mês */
-            const pct = calcPctPresenca(c.ID_Converso, sundays)
-            let pctTag
-            if (pct === null) {
-              pctTag = '<span class="pct-tag na">s/d</span>'
-            } else {
-              const cls = pct >= 75 ? 'green' : pct >= 50 ? 'yellow' : 'red'
-              pctTag = `<span class="pct-tag ${cls}">${pct}%</span>`
-            }
-
-            /* Colunas de domingo */
-            const cells = dstrs
-              .map(ds => {
-                const fr = appData.freqConv.find(
-                  f => f.ID_Converso === c.ID_Converso && f.Data_Semana === ds
-                )
-                const ok = fr ? parseBool(fr.Presente) : false
+            /* Colunas de domingo (tolerante ao dia lançado na semana).
+               Distingue "sem registro" (·) de "ausente" (❌). */
+            let registrados = 0,
+              presentes = 0
+            const cells = sundays
+              .map(s => {
+                const fr = freqNaSemana(c.ID_Converso, s)
+                if (!fr)
+                  return `<td><span title="Sem registro nesta semana" style="color:var(--t3)">·</span></td>`
+                registrados++
+                const ok = parseBool(fr.Presente)
+                if (ok) presentes++
                 return `<td>${ok ? '<span class="p-sim">✅</span>' : '<span class="p-nao">❌</span>'}</td>`
               })
               .join('')
+
+            /* Coluna % do mês — transparente: mostra presentes/registrados */
+            let pctTag
+            if (!registrados) {
+              pctTag = '<span class="pct-tag na">s/d</span>'
+            } else {
+              const pct = Math.round((presentes / registrados) * 100)
+              const cls = pct >= 75 ? 'green' : pct >= 50 ? 'yellow' : 'red'
+              pctTag = `<span class="pct-tag ${cls}" title="${presentes} presente(s) de ${registrados} domingo(s) registrado(s)">${pct}%</span>`
+            }
 
             /* Chamado do converso (apenas quando preenchido) */
             const chamadoLine =
@@ -3098,7 +3143,7 @@
           .join('')
 
         g('conv-footer').textContent =
-          `✅ Presente · ❌ Ausente · Mostrando ${convs.length} de ${totalAll} conversos`
+          `✅ Presente · ❌ Ausente · (·) sem registro · Mostrando ${convs.length} de ${totalAll} conversos`
       }
 
       /* ────────────────────────────────────────────
