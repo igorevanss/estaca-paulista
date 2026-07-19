@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://docs.google.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https://docs.google.com; object-src 'none'; base-uri 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; object-src 'none'; base-uri 'self'" />
     <title>Estaca Paulista — Painel do Sumo Conselho</title>
     <style>
       /* Fontes embutidas (Cinzel, Inter) — sem CDN, sem vazar IP pro Google */
@@ -109,6 +109,130 @@
         color: var(--gold-l);
         font-size: 1rem;
         letter-spacing: 0.06em;
+      }
+
+      /* ══════════════════════════════════════════════
+   LOGIN
+══════════════════════════════════════════════ */
+      #login-overlay {
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(135deg, #04203a 0%, #021018 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.2rem;
+        z-index: 10000;
+      }
+      #login-overlay.hidden {
+        display: none;
+      }
+      .login-card {
+        width: 100%;
+        max-width: 360px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--bord);
+        border-radius: 14px;
+        padding: 2rem 1.6rem 1.6rem;
+        text-align: center;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+      }
+      .login-emblem {
+        width: 54px;
+        height: 54px;
+        margin: 0 auto 0.7rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: #04203a;
+        background: radial-gradient(circle at 35% 35%, var(--gold-l), var(--gold-d));
+      }
+      .login-title {
+        font-family: 'Cinzel', serif;
+        font-weight: 700;
+        font-size: 1.3rem;
+        color: var(--gold-l);
+        letter-spacing: 0.04em;
+      }
+      .login-sub {
+        color: var(--t2);
+        font-size: 0.8rem;
+        margin-bottom: 1.3rem;
+      }
+      .login-hint {
+        color: var(--t2);
+        font-size: 0.82rem;
+        line-height: 1.4;
+        margin-bottom: 0.85rem;
+      }
+      .login-input {
+        width: 100%;
+        background: rgba(4, 32, 58, 0.55);
+        border: 1px solid rgba(201, 168, 76, 0.35);
+        border-radius: 8px;
+        color: var(--t1);
+        font-family: 'Inter', sans-serif;
+        font-size: 0.95rem;
+        padding: 0.7rem 0.85rem;
+        margin-bottom: 0.7rem;
+        outline: none;
+      }
+      .login-input:focus {
+        border-color: var(--gold);
+      }
+      .login-codigo {
+        text-align: center;
+        letter-spacing: 0.5em;
+        font-size: 1.4rem;
+        font-weight: 600;
+      }
+      .login-btn {
+        width: 100%;
+        background: linear-gradient(135deg, var(--gold), var(--gold-d));
+        border: none;
+        border-radius: 8px;
+        color: #04203a;
+        font-family: 'Inter', sans-serif;
+        font-weight: 700;
+        font-size: 0.92rem;
+        padding: 0.72rem;
+        cursor: pointer;
+        transition: filter 0.15s ease;
+      }
+      .login-btn:hover {
+        filter: brightness(1.08);
+      }
+      .login-btn:disabled {
+        opacity: 0.55;
+        cursor: default;
+      }
+      .login-link {
+        width: 100%;
+        background: none;
+        border: none;
+        color: var(--t2);
+        font-family: 'Inter', sans-serif;
+        font-size: 0.8rem;
+        padding: 0.6rem;
+        margin-top: 0.2rem;
+        cursor: pointer;
+      }
+      .login-link:hover {
+        color: var(--gold-l);
+      }
+      .login-msg {
+        min-height: 1.1rem;
+        margin-top: 0.7rem;
+        font-size: 0.82rem;
+        color: var(--t2);
+      }
+      .login-msg.erro {
+        color: var(--red-t);
+      }
+      .login-msg.ok {
+        color: var(--green);
       }
 
       /* ══════════════════════════════════════════════
@@ -993,6 +1117,57 @@
     </div>
 
     <!-- ══════════════════════════════════════════
+     LOGIN (código por e-mail)
+══════════════════════════════════════════ -->
+    <div id="login-overlay" class="hidden">
+      <div class="login-card">
+        <div class="login-emblem">✦</div>
+        <div class="login-title">Estaca Paulista</div>
+        <div class="login-sub">Painel de Liderança · acesso restrito</div>
+
+        <!-- Passo 1: e-mail -->
+        <div id="login-step-email">
+          <p class="login-hint">
+            Informe seu e-mail autorizado para receber um código de acesso.
+          </p>
+          <input
+            id="login-email"
+            class="login-input"
+            type="email"
+            inputmode="email"
+            autocomplete="email"
+            placeholder="seu-email@exemplo.com"
+            onkeydown="if(event.key==='Enter')enviarCodigo()"
+          />
+          <button class="login-btn" onclick="enviarCodigo()">
+            Enviar código
+          </button>
+        </div>
+
+        <!-- Passo 2: código -->
+        <div id="login-step-codigo" style="display: none">
+          <p class="login-hint">Digite o código de 6 dígitos que enviamos.</p>
+          <input
+            id="login-codigo"
+            class="login-input login-codigo"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="6"
+            placeholder="000000"
+            onkeydown="if(event.key==='Enter')entrar()"
+          />
+          <button class="login-btn" onclick="entrar()">Entrar</button>
+          <button class="login-link" onclick="loginPasso(1)">
+            ← Usar outro e-mail
+          </button>
+        </div>
+
+        <div id="login-msg" class="login-msg"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
      CABEÇALHO
 ══════════════════════════════════════════ -->
     <header class="header">
@@ -1028,6 +1203,15 @@
             <option value="ALA_ABREU_LIMA">Ala Abreu e Lima</option>
             <option value="ALA_TIMBAUBA">Ramo Timbaúba</option>
           </select>
+          <button
+            class="btn-retry"
+            onclick="sair()"
+            title="Sair"
+            aria-label="Sair"
+            style="padding: 0.3rem 0.7rem"
+          >
+            Sair
+          </button>
         </div>
       </div>
     </header>
@@ -1244,13 +1428,17 @@
 ──────────────────────────────────────────── */
 
       // ► MODO DEMONSTRAÇÃO
-      //   true  = usa dados fictícios (para apresentações)
-      //   false = conecta à planilha real
+      //   true  = usa dados fictícios (para apresentações), sem login
+      //   false = conecta ao backend seguro (Apps Script) com login por código
       const DEMO_MODE = false
 
-      // ► ID DA PLANILHA REAL (só usado quando DEMO_MODE = false)
-      //   Cole aqui apenas o código entre /d/ e /edit do link do Google Sheets
-      const SHEET_ID = '1B7OIKv71nh8o-SbcMdSullAKeQRQwFYYXHm3WPfhIhc'
+      // ► URL DO BACKEND (Apps Script Web App)
+      //   Cole aqui a URL do app da Web publicado (termina em /exec).
+      //   Veja apps-script/README.md para publicar e obter esta URL.
+      const API_URL = 'COLE_AQUI_A_URL_DO_APPS_SCRIPT_EXEC'
+
+      // Chave do token de sessão guardado no navegador
+      const TOKEN_KEY = 'ep_token'
       /* ────────────────────────────────────────────
    DEFINIÇÃO DAS UNIDADES
 ──────────────────────────────────────────── */
@@ -1544,117 +1732,177 @@
       }
 
       /* ────────────────────────────────────────────
-   BUSCA DE DADOS NO GOOGLE SHEETS (JSONP)
-   Usa injeção de <script> para contornar o
-   bloqueio de CORS ao abrir de arquivo local.
+   BACKEND SEGURO (Apps Script) + LOGIN POR CÓDIGO
+   O painel não lê a planilha diretamente: fala com o
+   Web App, que só devolve os dados a quem tem token.
 ──────────────────────────────────────────── */
-      function fetchSheet(name) {
-        return new Promise((resolve, reject) => {
-          const cb = 'gviz_' + Math.random().toString(36).slice(2)
-          const sid = 'gviz_s_' + cb
-          let timer = null
 
-          /* Limpa callback, <script> e timeout — evita vazamento e garante
-             que cada caminho (sucesso/erro/timeout) só resolva uma vez. */
-          const cleanup = () => {
-            if (timer) clearTimeout(timer)
-            delete window[cb]
-            document.getElementById(sid)?.remove()
-          }
-
-          window[cb] = function (res) {
-            try {
-              cleanup()
-              resolve(parseGvizTable(res))
-            } catch (e) {
-              cleanup()
-              reject(e)
-            }
-          }
-
-          const s = document.createElement('script')
-          s.id = sid
-          /* headers=1 força a linha 1 como cabeçalho — sem isso, abas onde todas
-             as células são texto (ex.: Unidades) voltam com labels vazios e o
-             cabeçalho vira linha de dados */
-          s.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${cb}&headers=1&sheet=${encodeURIComponent(name)}`
-          s.onerror = () => {
-            cleanup()
-            reject(new Error(`Falha ao carregar aba "${name}"`))
-          }
-          /* Timeout de segurança: se a planilha não estiver acessível, o
-             <script> pode não disparar nem sucesso nem erro (ex.: gviz devolve
-             página de login). Sem isto, o app trava em "Carregando...". */
-          timer = setTimeout(() => {
-            cleanup()
-            reject(new Error(`Tempo esgotado ao carregar aba "${name}"`))
-          }, 15000)
-          document.head.appendChild(s)
+      /* POST com text/plain evita o "preflight" de CORS; a resposta do
+         Apps Script é lida normalmente como JSON. */
+      async function apiCall(payload) {
+        const r = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload),
+          redirect: 'follow'
         })
+        return r.json()
       }
 
-      /* Converte o formato gviz JSON para array de objetos */
-      function parseGvizTable(res) {
-        const table = res && res.table
-        if (!table || !table.cols || !table.rows) return []
-        const headers = table.cols.map(c => (c.label || c.id || '').trim())
-        return table.rows
-          .filter(row => row && row.c)
-          .map(row => {
-            const obj = {}
-            headers.forEach((h, i) => {
-              const cell = row.c ? row.c[i] : null
-              obj[h] =
-                cell && cell.v !== null && cell.v !== undefined
-                  ? String(cell.v)
-                  : ''
-            })
-            return obj
-          })
+      function getToken() {
+        try {
+          return localStorage.getItem(TOKEN_KEY) || ''
+        } catch (e) {
+          return ''
+        }
+      }
+      function setToken(t) {
+        try {
+          localStorage.setItem(TOKEN_KEY, t)
+        } catch (e) {}
+      }
+      function clearToken() {
+        try {
+          localStorage.removeItem(TOKEN_KEY)
+        } catch (e) {}
+      }
+
+      /* Converte a resposta do backend (dados por aba) no formato do painel */
+      function mapearDados(dados) {
+        dados = dados || {}
+        return {
+          unidades: dados.Unidades || [],
+          conversos: dados.Conversos || [],
+          relatorios: dados.Relatorios_Semanais || [],
+          freqConv: dados.Frequencia_Conversos || []
+        }
       }
 
       async function loadData() {
-        setLoading(true)
         setBanner(false)
 
-        /* Modo demonstração: pula a conexão e usa dados fictícios */
+        /* Modo demonstração: pula login e backend, usa dados fictícios */
         if (DEMO_MODE) {
+          setLoading(true)
           appData = buildDemoData()
           normalizeAppData()
           render()
           setLoading(false)
-          setBanner(
-            true,
-            'Modo demonstração ativo — dados fictícios. Para conectar à planilha real, defina DEMO_MODE = false no código.'
-          )
+          setBanner(true, 'Modo demonstração ativo — dados fictícios.')
           return
         }
 
-        try {
-          const [unidades, conversos, relatorios, freqConv] = await Promise.all(
-            [
-              fetchSheet('Unidades'),
-              fetchSheet('Conversos'),
-              fetchSheet('Relatorios_Semanais'),
-              fetchSheet('Frequencia_Conversos')
-            ]
-          )
-          appData = { unidades, conversos, relatorios, freqConv }
-          normalizeAppData()
-          render()
-          setLoading(false)
-        } catch (err) {
-          console.warn('Fallback para dados de demonstração:', err)
-          appData = buildDemoData()
-          normalizeAppData()
-          render()
-          setLoading(false)
-          setBanner(
-            true,
-            'Não foi possível conectar à planilha. Exibindo dados de demonstração.'
-          )
+        const token = getToken()
+        if (!token) {
+          mostrarLogin()
+          return
         }
-        scheduleRefresh()
+
+        setLoading(true)
+        try {
+          const res = await apiCall({ action: 'obterDados', token })
+          if (!res || !res.ok) {
+            setLoading(false)
+            if (res && res.naoAutorizado) {
+              clearToken()
+              mostrarLogin('Sua sessão expirou. Entre novamente.')
+            } else {
+              setBanner(true, (res && res.erro) || 'Não foi possível carregar os dados.')
+            }
+            return
+          }
+          appData = mapearDados(res.dados)
+          normalizeAppData()
+          esconderLogin()
+          render()
+          setLoading(false)
+          scheduleRefresh()
+        } catch (err) {
+          setLoading(false)
+          setBanner(true, 'Falha de conexão com o servidor. Tente novamente.')
+        }
+      }
+
+      function sair() {
+        clearToken()
+        appData = null
+        mostrarLogin('Você saiu. Entre novamente para ver o painel.')
+      }
+
+      /* ── Fluxo de login: e-mail → código ── */
+      function mostrarLogin(msg) {
+        setLoading(false)
+        g('login-overlay').classList.remove('hidden')
+        loginPasso(1)
+        loginMsg(msg || '')
+      }
+      function esconderLogin() {
+        g('login-overlay').classList.add('hidden')
+      }
+      function loginPasso(n) {
+        g('login-step-email').style.display = n === 1 ? '' : 'none'
+        g('login-step-codigo').style.display = n === 2 ? '' : 'none'
+        setTimeout(() => {
+          const alvo = n === 1 ? g('login-email') : g('login-codigo')
+          if (alvo) alvo.focus()
+        }, 30)
+      }
+      function loginMsg(txt, tipo) {
+        const el = g('login-msg')
+        el.textContent = txt || ''
+        el.className = 'login-msg' + (tipo ? ' ' + tipo : '')
+      }
+      function loginBusy(b) {
+        document
+          .querySelectorAll('#login-overlay button')
+          .forEach(x => (x.disabled = b))
+      }
+
+      async function enviarCodigo() {
+        const email = g('login-email').value.trim()
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+          loginMsg('Digite um e-mail válido.', 'erro')
+          return
+        }
+        loginBusy(true)
+        loginMsg('Enviando código...')
+        try {
+          const res = await apiCall({ action: 'solicitarCodigo', email })
+          if (res && res.ok) {
+            loginPasso(2)
+            loginMsg('Enviamos um código para ' + email + '. Confira o e-mail.', 'ok')
+          } else {
+            loginMsg((res && res.erro) || 'Não foi possível enviar o código.', 'erro')
+          }
+        } catch (e) {
+          loginMsg('Falha de conexão. Tente novamente.', 'erro')
+        }
+        loginBusy(false)
+      }
+
+      async function entrar() {
+        const email = g('login-email').value.trim()
+        const codigo = g('login-codigo').value.trim()
+        if (!/^\d{6}$/.test(codigo)) {
+          loginMsg('O código tem 6 dígitos.', 'erro')
+          return
+        }
+        loginBusy(true)
+        loginMsg('Verificando...')
+        try {
+          const res = await apiCall({ action: 'validarCodigo', email, codigo })
+          if (res && res.ok && res.token) {
+            setToken(res.token)
+            loginMsg('')
+            esconderLogin()
+            loadData()
+          } else {
+            loginMsg((res && res.erro) || 'Código inválido.', 'erro')
+          }
+        } catch (e) {
+          loginMsg('Falha de conexão. Tente novamente.', 'erro')
+        }
+        loginBusy(false)
       }
 
       function normalizeAppData() {

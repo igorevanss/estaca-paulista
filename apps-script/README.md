@@ -71,8 +71,20 @@ Deve responder algo como:
 {"ok":true,"msg":"Painel Estaca Paulista — backend ativo"}
 ```
 
-### 6. Me mandar a URL
-Passe a URL do `/exec` para o painel ser conectado a ela.
+### 6. Conectar o painel
+No arquivo `index.html`, no início do `<script>`, troque:
+```js
+const API_URL = 'COLE_AQUI_A_URL_DO_APPS_SCRIPT_EXEC'
+```
+pela URL do `/exec` que você copiou. (Ou me mande a URL que eu faço isso.)
+
+Pronto: ao abrir o painel, ele vai pedir e-mail → código → e só então mostra os
+dados.
+
+> **Observação técnica (CORS):** o painel chama o Apps Script com `fetch` (POST
+> `text/plain`), padrão que funciona com Web Apps do Apps Script. Se em algum
+> navegador aparecer erro de conexão, dá para alternar para JSONP — o backend já
+> aceita o parâmetro `callback` para isso. É só avisar.
 
 ---
 
