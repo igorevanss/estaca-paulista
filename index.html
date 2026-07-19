@@ -1521,13 +1521,22 @@
         return new Promise((resolve, reject) => {
           const cb = 'gviz_' + Math.random().toString(36).slice(2)
           const sid = 'gviz_s_' + cb
+          let timer = null
+
+          /* Limpa callback, <script> e timeout — evita vazamento e garante
+             que cada caminho (sucesso/erro/timeout) só resolva uma vez. */
+          const cleanup = () => {
+            if (timer) clearTimeout(timer)
+            delete window[cb]
+            document.getElementById(sid)?.remove()
+          }
 
           window[cb] = function (res) {
             try {
-              delete window[cb]
-              document.getElementById(sid)?.remove()
+              cleanup()
               resolve(parseGvizTable(res))
             } catch (e) {
+              cleanup()
               reject(e)
             }
           }
@@ -1539,9 +1548,16 @@
              cabeçalho vira linha de dados */
           s.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${cb}&headers=1&sheet=${encodeURIComponent(name)}`
           s.onerror = () => {
-            delete window[cb]
+            cleanup()
             reject(new Error(`Falha ao carregar aba "${name}"`))
           }
+          /* Timeout de segurança: se a planilha não estiver acessível, o
+             <script> pode não disparar nem sucesso nem erro (ex.: gviz devolve
+             página de login). Sem isto, o app trava em "Carregando...". */
+          timer = setTimeout(() => {
+            cleanup()
+            reject(new Error(`Tempo esgotado ao carregar aba "${name}"`))
+          }, 15000)
           document.head.appendChild(s)
         })
       }
@@ -2436,8 +2452,8 @@
         el.innerHTML = UNITS.map(
           (u, i) => `
     <div class="freq-leg-item" id="freq-leg-${i}" onclick="toggleFreqDataset(${i})">
-      <span class="freq-leg-dot" style="background:${u.cor}"></span>
-      <span>${u.nome}</span>
+      <span class="freq-leg-dot" style="background:${escHtml(u.cor)}"></span>
+      <span>${escHtml(u.nome)}</span>
     </div>
   `
         ).join('')
