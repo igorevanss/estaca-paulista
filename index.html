@@ -1031,7 +1031,7 @@
         </div>
         <!-- Card 3 -->
         <div class="kpi-card">
-          <div class="kpi-lbl">Presentes neste domingo</div>
+          <div class="kpi-lbl">Presentes na última semana</div>
           <div class="kpi-val" id="kpi-freq-val">—</div>
           <div class="kpi-badge" id="kpi-freq-badge">carregando...</div>
         </div>
@@ -1083,7 +1083,7 @@
                 <th>Unidade</th>
                 <th>Responsável</th>
                 <th>Cidade</th>
-                <th>Presentes (domingo atual)</th>
+                <th>Presentes (última semana)</th>
                 <th class="c">Variação</th>
                 <th class="c">Conversos</th>
                 <th class="c">Correlação Missionária</th>
@@ -1327,7 +1327,10 @@
           sel.innerHTML =
             '<option value="">Estaca Paulista (todas as unidades)</option>' +
             novos
-              .map(u => `<option value="${u.id}">${u.nome}</option>`)
+              .map(
+                u =>
+                  `<option value="${escHtml(u.id)}">${escHtml(u.nome)}</option>`
+              )
               .join('')
           if (atual && UMAP[atual]) {
             sel.value = atual
@@ -1436,6 +1439,25 @@
         )
       }
 
+      /* Como parseBool, mas distingue "não preenchido" de "Não".
+         Retorna true (Sim), false (Não) ou null (vazio / N/A). */
+      function boolOuNulo(v) {
+        if (v === null || v === undefined) return null
+        const s = String(v).trim()
+        if (s === '' || /^n\/?a$/i.test(s)) return null
+        return parseBool(s)
+      }
+
+      /* Escapa texto vindo da planilha antes de injetar via innerHTML. */
+      function escHtml(v) {
+        return String(v === null || v === undefined ? '' : v)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;')
+      }
+
       function parseDate(v) {
         if (!v) return null
         if (v instanceof Date) return isNaN(v.getTime()) ? null : v
@@ -1448,11 +1470,13 @@
           return new Date(+y, +m, +d, +(h || 0), +(mi || 0), +(se || 0))
         }
 
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+        // DD/MM/AAAA — aceita 1 ou 2 dígitos em dia/mês (ex.: "8/3/2026")
+        if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
           const [d, m, y] = s.split('/')
           return new Date(+y, +m - 1, +d)
         }
-        if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+        // AAAA-MM-DD (ISO) — aceita 1 ou 2 dígitos em mês/dia
+        if (/^\d{4}-\d{1,2}-\d{1,2}/.test(s)) {
           const [y, m, d] = s.split('-')
           return new Date(+y, +m - 1, +d)
         }
@@ -2012,15 +2036,20 @@
    HELPERS — NOVOS CAMPOS DE CONVERSOS
 ──────────────────────────────────────────── */
 
-      /* Verifica se converso está dentro do prazo de 24 meses */
+      /* Verifica se converso está dentro do prazo de 24 meses.
+         Recalcula sempre pela Data_Batismo (fonte da verdade) — a coluna
+         Dentro_Prazo da planilha pode envelhecer. Só usa a coluna como
+         fallback quando não há data de batismo. */
       function dentroPrazo(c) {
+        const d = parseDate(c.Data_Batismo)
+        if (d) {
+          const limite = new Date(d)
+          limite.setMonth(limite.getMonth() + 24)
+          return new Date() < limite
+        }
         if (c.Dentro_Prazo !== undefined && c.Dentro_Prazo !== '')
           return parseBool(c.Dentro_Prazo)
-        const d = parseDate(c.Data_Batismo)
-        if (!d) return false
-        const limite = new Date(d)
-        limite.setMonth(limite.getMonth() + 24)
-        return new Date() < limite
+        return false
       }
 
       /* Meses inteiros desde o batismo */
@@ -2079,21 +2108,42 @@
         })
       }
 
-      function estacaAvgLastSunday(sundays) {
-        if (!sundays.length) return 0
-        const last = sundays[sundays.length - 1]
+      /* Relatórios de uma unidade, do mais recente para o mais antigo. */
+      function relatoriosDaUnidade(uid) {
+        return appData.relatorios
+          .filter(r => r.ID_Unidade === uid && parseDate(r.Data_Semana))
+          .sort((a, b) => parseDate(b.Data_Semana) - parseDate(a.Data_Semana))
+      }
+
+      /* Presença sacramental do relatório mais recente da unidade (idx=0) ou
+         do anterior (idx=1). Retorna { valor, data } ou null se a unidade
+         ainda não tem esse relatório — assim uma unidade que reportou numa
+         semana anterior não aparece com 0 ("0 falso"). */
+      function presencaRecente(uid, idx = 0) {
+        const r = relatoriosDaUnidade(uid)[idx]
+        return r
+          ? { valor: parseInt(r.AC1_Frequencia_Sacramental) || 0, data: r.Data_Semana }
+          : null
+      }
+
+      /* Média da presença mais recente entre as unidades que já reportaram. */
+      function estacaMediaUltimaPresenca() {
         let tot = 0,
           cnt = 0
         UNITS.forEach(u => {
-          const r = appData.relatorios.find(
-            r => r.ID_Unidade === u.id && r.Data_Semana === last.str
-          )
-          if (r) {
-            tot += parseInt(r.AC1_Frequencia_Sacramental) || 0
+          const p = presencaRecente(u.id)
+          if (p) {
+            tot += p.valor
             cnt++
           }
         })
         return cnt ? tot / cnt : 0
+      }
+
+      /* Formata uma Data_Semana normalizada como "dom DD/MM". */
+      function fmtDomCurto(dstr) {
+        const d = parseDate(dstr)
+        return d ? `dom ${pad(d.getDate())}/${pad(d.getMonth() + 1)}` : ''
       }
 
       /* Calcula o status de uma unidade */
@@ -2104,8 +2154,10 @@
           (a, b) => parseDate(b.Data_Semana) - parseDate(a.Data_Semana)
         )[0]
 
-        /* Crítico: correlação inativa */
-        if (!parseBool(latest.AC2_Correlacao_Acontecendo)) return 'critico'
+        /* Crítico: correlação inativa (só quando explicitamente "Não";
+           campo em branco = sem dado, não conta como crítico) */
+        if (boolOuNulo(latest.AC2_Correlacao_Acontecendo) === false)
+          return 'critico'
 
         /* Crítico: frequência caindo 3+ domingos consecutivos */
         const freqs = freqForUnit(uid, sundays)
@@ -2118,10 +2170,11 @@
         const per = (latest.AC2_Periodicidade || '').toLowerCase().trim()
         if (per && per !== 'semanal') return 'atencao'
 
-        /* Atenção: frequência < 60% da média da estaca */
-        const avg = estacaAvgLastSunday(sundays)
-        const mine = freqs[freqs.length - 1] || 0
-        if (avg > 0 && mine < avg * 0.6) return 'atencao'
+        /* Atenção: presença mais recente < 60% da média da estaca
+           (compara a última leva de cada unidade, não um domingo fixo) */
+        const avg = estacaMediaUltimaPresenca()
+        const pRec = presencaRecente(uid)
+        if (avg > 0 && pRec && pRec.valor < avg * 0.6) return 'atencao'
 
         return 'regular'
       }
@@ -2199,36 +2252,40 @@
           'up'
         )
 
-        /* KPI 3 — Presentes */
-        if (sun.length) {
-          const lastS = sun[sun.length - 1]
-          const prevS = sun.length > 1 ? sun[sun.length - 2] : null
+        /* KPI 3 — Presentes (última semana reportada por cada unidade) */
+        {
           const uList = selectedUnit
             ? UNITS.filter(u => u.id === selectedUnit)
             : UNITS
           let last = 0,
-            prev = 0
+            prev = 0,
+            temAlgum = false,
+            temPrev = false
           uList.forEach(u => {
-            const rl = appData.relatorios.find(
-              r => r.ID_Unidade === u.id && r.Data_Semana === lastS.str
-            )
-            if (rl) last += parseInt(rl.AC1_Frequencia_Sacramental) || 0
-            if (prevS) {
-              const rp = appData.relatorios.find(
-                r => r.ID_Unidade === u.id && r.Data_Semana === prevS.str
-              )
-              if (rp) prev += parseInt(rp.AC1_Frequencia_Sacramental) || 0
+            const p0 = presencaRecente(u.id, 0)
+            const p1 = presencaRecente(u.id, 1)
+            if (p0) {
+              last += p0.valor
+              temAlgum = true
+            }
+            if (p1) {
+              prev += p1.valor
+              temPrev = true
             }
           })
-          g('kpi-freq-val').textContent = last
-          const d = last - prev
-          if (d > 0) badge('kpi-freq-badge', `↑ +${d} vs domingo ant.`, 'up')
-          else if (d < 0)
-            badge('kpi-freq-badge', `↓ ${d} vs domingo ant.`, 'dn')
-          else badge('kpi-freq-badge', '= estável vs domingo ant.', '')
-        } else {
-          g('kpi-freq-val').textContent = '—'
-          badge('kpi-freq-badge', 'sem dados', '')
+          if (temAlgum) {
+            g('kpi-freq-val').textContent = last
+            const d = last - prev
+            if (!temPrev) badge('kpi-freq-badge', 'última leva reportada', '')
+            else if (d > 0)
+              badge('kpi-freq-badge', `↑ +${d} vs leva anterior`, 'up')
+            else if (d < 0)
+              badge('kpi-freq-badge', `↓ ${d} vs leva anterior`, 'dn')
+            else badge('kpi-freq-badge', '= estável vs leva anterior', '')
+          } else {
+            g('kpi-freq-val').textContent = '—'
+            badge('kpi-freq-badge', 'sem dados', '')
+          }
         }
 
         /* KPI 4 — Alertas */
@@ -2400,7 +2457,7 @@
 ──────────────────────────────────────────── */
       function renderAlerts() {
         const sun = last5Sundays()
-        const avg = estacaAvgLastSunday(sun)
+        const avg = estacaMediaUltimaPresenca()
         const units = selectedUnit
           ? UNITS.filter(u => u.id === selectedUnit)
           : UNITS
@@ -2413,8 +2470,9 @@
             (a, b) => parseDate(b.Data_Semana) - parseDate(a.Data_Semana)
           )[0]
 
-          /* Crítico — correlação inativa */
-          if (!parseBool(latest.AC2_Correlacao_Acontecendo)) {
+          /* Crítico — correlação inativa (apenas quando explicitamente "Não") */
+          const corrEstado = boolOuNulo(latest.AC2_Correlacao_Acontecendo)
+          if (corrEstado === false) {
             list.push({
               type: 'crit',
               icon: '🔴',
@@ -2439,11 +2497,7 @@
 
           /* Atenção — correlação irregular */
           const per = (latest.AC2_Periodicidade || '').toLowerCase().trim()
-          if (
-            parseBool(latest.AC2_Correlacao_Acontecendo) &&
-            per &&
-            per !== 'semanal'
-          ) {
+          if (corrEstado === true && per && per !== 'semanal') {
             list.push({
               type: 'warn',
               icon: '⚠️',
@@ -2452,14 +2506,14 @@
             })
           }
 
-          /* Atenção — abaixo de 60% da média */
-          const mine = freqs[freqs.length - 1] || 0
-          if (avg > 0 && mine < avg * 0.6) {
+          /* Atenção — presença mais recente abaixo de 60% da média */
+          const pRec = presencaRecente(u.id)
+          if (avg > 0 && pRec && pRec.valor < avg * 0.6) {
             list.push({
               type: 'warn',
               icon: '⚠️',
               title: `${u.nome} — Frequência Abaixo da Média`,
-              desc: `${mine} presentes — menos de 60% da média da estaca (${Math.round(avg)}).`
+              desc: `${pRec.valor} presentes — menos de 60% da média da estaca (${Math.round(avg)}).`
             })
           }
 
@@ -2552,7 +2606,7 @@
           const un = selectedUnit
             ? UMAP[selectedUnit]?.nome || 'esta unidade'
             : 'a Estaca Paulista'
-          el.innerHTML = `<div class="no-alerts">Nenhum alerta para ${un} ✅<br><span style="font-size:.73rem;color:var(--t3)">Todas as métricas acompanhadas estão dentro do esperado.</span></div>`
+          el.innerHTML = `<div class="no-alerts">Nenhum alerta para ${escHtml(un)} ✅<br><span style="font-size:.73rem;color:var(--t3)">Todas as métricas acompanhadas estão dentro do esperado.</span></div>`
           return
         }
 
@@ -2562,8 +2616,8 @@
     <div class="alert-item ${a.type}">
       <div class="alert-icon">${a.icon}</div>
       <div>
-        <div class="alert-title">${a.title}</div>
-        <div class="alert-desc">${a.desc}</div>
+        <div class="alert-title">${escHtml(a.title)}</div>
+        <div class="alert-desc">${escHtml(a.desc)}</div>
       </div>
     </div>
   `
@@ -2581,12 +2635,12 @@
           : UNITS
         const tbody = g('units-tbody')
 
-        /* Máximo de frequência para escalar a barra */
+        /* Máximo de frequência (presença mais recente de cada unidade) p/ a barra */
         const maxFreq = Math.max(
           1,
           ...UNITS.map(u => {
-            const f = freqForUnit(u.id, sun)
-            return f[f.length - 1] || 0
+            const p = presencaRecente(u.id)
+            return p ? p.valor : 0
           })
         )
 
@@ -2596,27 +2650,39 @@
 
         tbody.innerHTML = units
           .map(u => {
-            const freqs = freqForUnit(u.id, sun)
-            const cur = freqs[freqs.length - 1] || 0
-            const prev = freqs.length > 1 ? freqs[freqs.length - 2] : null
+            const p0 = presencaRecente(u.id, 0)
+            const p1 = presencaRecente(u.id, 1)
+            const cur = p0 ? p0.valor : 0
+            const prev = p1 ? p1.valor : null
             const diff = prev !== null ? cur - prev : null
             const pct = Math.round((cur / maxFreq) * 100)
+            const curData = p0 ? p0.data : null
             const st = calcStatus(u.id, sun)
 
             const reps = appData.relatorios.filter(r => r.ID_Unidade === u.id)
             const latest = reps.sort(
               (a, b) => parseDate(b.Data_Semana) - parseDate(a.Data_Semana)
             )[0]
-            const corrOk =
-              latest && parseBool(latest.AC2_Correlacao_Acontecendo)
+            const corrEstado = latest
+              ? boolOuNulo(latest.AC2_Correlacao_Acontecendo)
+              : null
             const corrPer = latest
               ? (latest.AC2_Periodicidade || '').toLowerCase().trim()
               : ''
-            const corrIcon = !corrOk
-              ? '🔴'
-              : corrPer === 'semanal'
-                ? '✅'
-                : '⚠️'
+            const corrIcon =
+              corrEstado === null
+                ? '<span style="color:var(--t3)">—</span>'
+                : corrEstado === false
+                  ? '🔴'
+                  : corrPer === 'semanal'
+                    ? '✅'
+                    : '⚠️'
+            const corrTitle =
+              corrEstado === null
+                ? 'Sem dado de correlação'
+                : corrEstado === false
+                  ? 'Inativa'
+                  : corrPer || 'Ativa'
 
             /* Ícone tri-estado (Sim ✅ · Não ❌ · vazio —) com tooltip por estado */
             const triIcon = (v, t) =>
@@ -2668,18 +2734,19 @@
             return `
       <tr>
         <td>
-          <div class="u-name">${u.nome}</div>
-          <div class="u-city">${u.cidade}</div>
+          <div class="u-name">${escHtml(u.nome)}</div>
+          <div class="u-city">${escHtml(u.cidade)}</div>
         </td>
-        <td class="resp-td">${resp}</td>
-        <td style="color:var(--t2)">${u.cidade}</td>
+        <td class="resp-td">${escHtml(resp)}</td>
+        <td style="color:var(--t2)">${escHtml(u.cidade)}</td>
         <td>
           <span style="color:var(--t1);font-weight:600">${cur}</span>
+          ${curData ? `<span style="font-size:.62rem;color:var(--t3);margin-left:.35rem">${escHtml(fmtDomCurto(curData))}</span>` : ''}
           <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
         </td>
         <td class="c">${diffHtml}</td>
         <td>${convStatHtml}</td>
-        <td class="c" title="${(corrOk ? corrPer || 'Ativa' : 'Inativa') + (nomeLMA ? ' · LMA: ' + nomeLMA : '')}">${corrIcon}</td>
+        <td class="c" title="${escHtml(corrTitle + (nomeLMA ? ' · LMA: ' + nomeLMA : ''))}">${corrIcon}</td>
         <td class="c">${triIcon(caminhoConv, {
           sim: 'Utiliza o Caminho do Convênio',
           nao: 'Não utiliza o Caminho do Convênio',
@@ -2704,7 +2771,10 @@
         const tot = convs.length
         const yr = new Date().getFullYear()
 
-        g('retention-badge').textContent = `${tot} conversos · ${yr}`
+        /* O total considera todos os conversos dentro do prazo de 24 meses
+           (pode incluir batismos do ano anterior), por isso o rótulo não usa
+           o ano — evita dizer "· 2026" contando alguém batizado em 2025. */
+        g('retention-badge').textContent = `${tot} conversos · últimos 24 meses`
         g('ano-batismo').textContent = yr
 
         const frequentando = convs.filter(c => parseBool(c.Frequentando)).length
@@ -2915,7 +2985,11 @@
       function handleMonthChange(val) {
         const [y, m] = val.split('-')
         selectedMon = { year: parseInt(y), month: parseInt(m) }
+        /* A tabela de unidades (% presença) e os alertas de "sem presença no
+           mês" também dependem do mês selecionado — re-renderizar todos. */
         renderConvTable()
+        renderUnitsTable()
+        renderAlerts()
       }
 
       /* ────────────────────────────────────────────
@@ -2990,14 +3064,14 @@
             /* Chamado do converso (apenas quando preenchido) */
             const chamadoLine =
               c.Qual_Chamado && c.Qual_Chamado.trim()
-                ? `<div style="font-size:.67rem;color:var(--gold)">📋 ${c.Qual_Chamado}</div>`
+                ? `<div style="font-size:.67rem;color:var(--gold)">📋 ${escHtml(c.Qual_Chamado)}</div>`
                 : ''
 
             return `
       <tr>
         <td>
-          <div style="color:var(--t1);font-weight:500">${c.Nome_Completo}</div>
-          <div style="font-size:.67rem;color:var(--t3)">${unit ? unit.nome : c.ID_Unidade}</div>
+          <div style="color:var(--t1);font-weight:500">${escHtml(c.Nome_Completo)}</div>
+          <div style="font-size:.67rem;color:var(--t3)">${escHtml(unit ? unit.nome : c.ID_Unidade)}</div>
           ${chamadoLine}
         </td>
         <td class="c">${mTag}</td>
